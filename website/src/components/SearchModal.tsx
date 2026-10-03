@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Search, X, FileText, Bookmark, BookOpen, Loader2, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { searchResearch } from '../data/researchService';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { performGlobalSearch, clearSearch } from '../store/slices/searchSlice';
 import { SearchResults } from '../types';
 
 interface SearchModalProps {
@@ -10,30 +11,27 @@ interface SearchModalProps {
 }
 
 function SearchModal({ isOpen, onClose }: SearchModalProps) {
+  const dispatch = useAppDispatch();
+  const searchResults = useAppSelector((state) => state.search.results);
+  const loading = useAppSelector((state) => state.search.loading);
+
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<SearchResults>({ papers: [], indexed: [], books: [], total: 0 });
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!query.trim()) {
-      setResults({ papers: [], indexed: [], books: [], total: 0 });
+      dispatch(clearSearch());
       return;
     }
 
-    setLoading(true);
     const timer = setTimeout(() => {
-      try {
-        const data = searchResearch(query);
-        setResults(data);
-      } catch (err) {
-        console.error('Search error:', err);
-      } finally {
-        setLoading(false);
-      }
-    }, 150);
+      dispatch(performGlobalSearch(query));
+    }, 200);
 
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [dispatch, query]);
+
+  const results = searchResults;
+
 
   // Escape key listener
   useEffect(() => {

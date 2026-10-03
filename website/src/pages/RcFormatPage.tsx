@@ -14,6 +14,8 @@ import {
   Filter,
 } from 'lucide-react';
 import { gsap } from 'gsap';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { fetchActiveRcDocuments } from '../store/slices/rcDocumentSlice';
 import { RC_FORMAT_DOCUMENTS, RcFormatDocument } from '../data/rcFormatData';
 import PdfModal from '../components/PdfModal';
 
@@ -27,11 +29,18 @@ const CATEGORIES = [
 ] as const;
 
 function RcFormatPage() {
+  const dispatch = useAppDispatch();
+  const reduxDocs = useAppSelector((state) => state.rcDocuments.activeItems);
+
   const pageRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedFileType, setSelectedFileType] = useState<'All' | 'pdf' | 'docx'>('All');
   const [selectedPdf, setSelectedPdf] = useState<{ url: string; title: string; subtitle?: string } | null>(null);
+
+  useEffect(() => {
+    dispatch(fetchActiveRcDocuments());
+  }, [dispatch]);
 
   // Entrance animations
   useEffect(() => {
@@ -59,7 +68,21 @@ function RcFormatPage() {
     return () => ctx.revert();
   }, []);
 
-  const filteredDocs = RC_FORMAT_DOCUMENTS.filter((doc) => {
+  const documentsSource: RcFormatDocument[] = reduxDocs.length > 0
+    ? reduxDocs.map((d: any) => ({
+        id: String(d.id || d.docKey),
+        title: d.title,
+        filename: d.filename,
+        category: d.category as any,
+        description: d.description || '',
+        fileType: (d.fileType || (d.filename.endsWith('.pdf') ? 'pdf' : 'docx')) as any,
+        fileSize: d.fileSize || 'N/A',
+        path: d.path,
+      }))
+    : RC_FORMAT_DOCUMENTS;
+
+  const filteredDocs = documentsSource.filter((doc) => {
+
     // Search query match
     if (search.trim()) {
       const term = search.toLowerCase();

@@ -3,14 +3,17 @@ import { BookOpen, Search, RefreshCw, Loader2 } from 'lucide-react';
 import { gsap } from 'gsap';
 import BookCard from '../components/BookCard';
 import Pagination from '../components/Pagination';
-import { getBooks } from '../data/researchService';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { fetchBooks } from '../store/slices/bookSlice';
 import { Book } from '../types';
 
 function BooksPage() {
+  const dispatch = useAppDispatch();
+  const reduxBooks = useAppSelector((state) => state.books.items);
+  const reduxCount = useAppSelector((state) => state.books.totalElements);
+  const reduxLoading = useAppSelector((state) => state.books.loading);
+
   const pageRef = useRef<HTMLDivElement>(null);
-  const [books, setBooks] = useState<Book[]>([]);
-  const [count, setCount] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 9;
 
@@ -19,17 +22,29 @@ function BooksPage() {
   const [selectedYear, setSelectedYear] = useState('');
 
   useEffect(() => {
-    setLoading(true);
-    try {
-      const data = getBooks({ search, year: selectedYear });
-      setBooks(data.books || []);
-      setCount(data.count || 0);
-    } catch (err) {
-      console.error('Error fetching books:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [search, selectedYear]);
+    dispatch(
+      fetchBooks({
+        search: search.trim() || undefined,
+        year: selectedYear || undefined,
+        size: 1000,
+      })
+    );
+  }, [dispatch, search, selectedYear]);
+
+  const books: Book[] = reduxBooks.map((b: any) => ({
+    ...b,
+    id: b.id || b.slNo,
+    title: b.paperTitle || b.bookOrChapterTitle || b.title || 'Untitled book or chapter',
+    authors: b.teacherName || b.authors,
+    year: b.yearOfPublication || b.year,
+    publisher: b.publisherName || b.publisher,
+    abstract: b.bookOrChapterTitle || b.abstractText,
+    isbn: b.isbnIssn || b.isbn,
+  }));
+
+  const count = reduxCount || books.length;
+  const loading = reduxLoading;
+
 
   // Page entrance animation
   useEffect(() => {

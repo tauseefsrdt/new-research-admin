@@ -22,14 +22,23 @@ import {
   BarChart3,
 } from "lucide-react";
 import { gsap } from "gsap";
-import { getDepartmentById, DEPARTMENTS_LIST, DepartmentInfo } from "../data/departmentData";
+import { getDepartmentById, DEPARTMENTS_LIST, DepartmentInfo, buildLiveDepartmentInfo } from "../data/departmentData";
 import { PHD_AWARDED_YEARS, PhDAwardedRecord } from "../data/phdSupervisorYearwiseData";
 import Pagination from "../components/Pagination";
 import PdfModal from "../components/PdfModal";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { fetchInstitutes } from "../store/slices/instituteSlice";
+import { fetchAllTheses } from "../store/slices/thesisSlice";
+import { fetchAllPhdSupervisors } from "../store/slices/phdSupervisorSlice";
+import { fetchAllVacantSeats } from "../store/slices/vacantSeatSlice";
+import { fetchAllResearchPapers } from "../store/slices/researchPaperSlice";
+import { fetchAllPatents } from "../store/slices/patentSlice";
+import { fetchAllBooks } from "../store/slices/bookSlice";
 
 export default function DepartmentPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const pageRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<"phdYearwise" | "theses" | "faculty" | "publications" | "patents" | "books">("phdYearwise");
   const [thesisViewMode, setThesisViewMode] = useState<"cards" | "table">("cards");
@@ -45,15 +54,42 @@ export default function DepartmentPage() {
 
   const currentSlug = id || "all";
 
+  const institutes = useAppSelector((state) => state.institutes.items);
+  const allTheses = useAppSelector((state) => state.theses.allItems);
+  const allSupervisors = useAppSelector((state) => state.phdSupervisors.allItems);
+  const allSeats = useAppSelector((state) => state.vacantSeats.allItems);
+  const allPapers = useAppSelector((state) => state.researchPapers.allItems);
+  const allPatents = useAppSelector((state) => state.patents.allItems);
+  const allBooks = useAppSelector((state) => state.books.allItems);
+
   useEffect(() => {
-    const data = getDepartmentById(currentSlug);
-    setDeptInfo(data);
+    dispatch(fetchInstitutes());
+    dispatch(fetchAllTheses());
+    dispatch(fetchAllPhdSupervisors());
+    dispatch(fetchAllVacantSeats());
+    dispatch(fetchAllResearchPapers());
+    dispatch(fetchAllPatents());
+    dispatch(fetchAllBooks());
+  }, [dispatch]);
+
+  useEffect(() => {
+    const liveData = buildLiveDepartmentInfo(
+      currentSlug,
+      institutes,
+      allTheses,
+      allSupervisors,
+      allSeats,
+      allPapers,
+      allPatents,
+      allBooks
+    );
+    setDeptInfo(liveData || getDepartmentById(currentSlug));
     setSearchQuery("");
     setSelectedThesisDept("All");
     setSelectedPhDDeptFilter("All");
     setSelectedYearFilter("All");
     setCurrentPage(1);
-  }, [currentSlug]);
+  }, [currentSlug, institutes, allTheses, allSupervisors, allSeats, allPapers, allPatents, allBooks]);
 
   // Entrance animation
   useEffect(() => {
@@ -287,8 +323,8 @@ export default function DepartmentPage() {
             className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 shadow-xs focus:outline-none focus:border-[#0A4A8F]"
           >
             <option value="all">🌟 All Departments Combined (University-wide)</option>
-            {DEPARTMENTS_LIST.map((d) => (
-              <option key={d.id} value={d.id}>
+            {(institutes.length > 0 ? institutes : DEPARTMENTS_LIST).map((d: any) => (
+              <option key={d.slug || d.id} value={d.slug || d.id}>
                 {d.title} ({d.code})
               </option>
             ))}

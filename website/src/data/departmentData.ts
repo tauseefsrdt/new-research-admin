@@ -356,3 +356,257 @@ export const getDepartmentById = (idOrSlug: string): DepartmentInfo | null => {
     totalPhDYearwiseSum,
   };
 };
+
+export const buildLiveDepartmentInfo = (
+  idOrSlug: string,
+  liveInstitutes: any[] = [],
+  liveTheses: any[] = [],
+  livePhdSupervisors: any[] = [],
+  liveVacantSeats: any[] = [],
+  livePapers: any[] = [],
+  livePatents: any[] = [],
+  liveBooks: any[] = []
+): DepartmentInfo | null => {
+  if (!liveInstitutes || liveInstitutes.length === 0) {
+    return getDepartmentById(idOrSlug);
+  }
+
+  const clean = (idOrSlug || "all").toLowerCase().trim();
+  const isAll = clean === "all" || clean === "all-departments" || clean === "departments";
+
+  const vacantRows: VacantSeatRow[] = liveVacantSeats.length > 0
+    ? liveVacantSeats.map((r: any, idx) => ({
+        id: r.id ?? idx + 1,
+        rowIndex: r.rowIndex ?? idx + 1,
+        institute: r.institute || "",
+        rawInstitute: r.rawInstitute || r.institute || "",
+        department: r.department || "",
+        rawDepartment: r.rawDepartment || r.department || "",
+        totalPhD: r.totalPhD ?? null,
+        rawTotalPhD: r.rawTotalPhD ?? r.totalPhD ?? null,
+        supervisorName: r.supervisorName || "",
+        rawSupervisorName: r.rawSupervisorName || r.supervisorName || "",
+        designation: r.designation || "",
+        rawDesignation: r.rawDesignation || r.designation || "",
+        designationSeatLimit: r.designationSeatLimit ?? 0,
+        allottedSeat: r.allottedSeat ?? 0,
+        noOfVacant: r.noOfVacant ?? 0,
+      }))
+    : VACANT_SEAT_DATA;
+
+  const thesesList: ThesisAwarded[] = liveTheses.length > 0
+    ? liveTheses.map((t: any, idx) => ({
+        id: t.id ?? idx + 1,
+        srNo: t.srNo ?? idx + 1,
+        rawFacultyInstitute: t.rawFacultyInstitute || t.institute || "",
+        institute: t.institute || "",
+        department: t.department || "",
+        scholarName: t.scholarName || "",
+        regNo: t.regNo || "",
+        scholarWithReg: t.scholarWithReg || (t.regNo ? `${t.scholarName} (${t.regNo})` : t.scholarName || ""),
+        supervisors: t.supervisors || "",
+        title: t.title || t.rawTitle || "",
+        rawTitle: t.rawTitle || t.title || "",
+        defenseDate: t.defenseDate || "",
+        academicSession: t.academicSession || "2025-26",
+      }))
+    : THESIS_AWARDED_DATA;
+
+  const phdYearwiseList: PhDAwardedRecord[] = livePhdSupervisors.length > 0
+    ? livePhdSupervisors.map((p: any, idx) => {
+        let yearly: Record<number, number> = {};
+        if (typeof p.yearlyJson === "string") {
+          try { yearly = JSON.parse(p.yearlyJson); } catch {}
+        } else if (p.yearly && typeof p.yearly === "object") {
+          yearly = p.yearly;
+        }
+        return {
+          id: p.id ?? idx + 1,
+          departmentCode: p.departmentCode || "",
+          departmentName: p.departmentName || "",
+          instituteSlug: p.instituteSlug || "",
+          supervisor: p.supervisor || "",
+          yearly,
+          grandTotal: p.grandTotal ?? Object.values(yearly).reduce((a, b) => Number(a) + Number(b), 0),
+        };
+      })
+    : PHD_AWARDED_DATA;
+
+  const papersList = livePapers.length > 0 ? livePapers : researchPapers;
+  const patentsList = livePatents.length > 0 ? livePatents : patents;
+  const booksList = liveBooks.length > 0 ? liveBooks : books;
+
+  if (isAll) {
+    let allPrograms: string[] = [];
+    liveInstitutes.forEach((inst: any) => {
+      if (inst.programsJson) {
+        try {
+          const progs = JSON.parse(inst.programsJson);
+          if (Array.isArray(progs)) allPrograms.push(...progs);
+        } catch {}
+      }
+    });
+    if (allPrograms.length === 0) {
+      allPrograms = Array.from(new Set(DEPARTMENTS_LIST.flatMap((d) => d.programs)));
+    }
+
+    const countedDepts = new Set<string>();
+    let totalPhDSeats = 0;
+    vacantRows.forEach((r) => {
+      const key = `${r.institute}_${r.department}`;
+      if (!countedDepts.has(key)) {
+        countedDepts.add(key);
+        if (r.totalPhD !== null) totalPhDSeats += r.totalPhD;
+      }
+    });
+
+    const totalDesignationLimit = vacantRows.reduce((acc, r) => acc + (r.designationSeatLimit || 0), 0);
+    const totalAllottedSeats = vacantRows.reduce((acc, r) => acc + (r.allottedSeat || 0), 0);
+    const totalVacantSeats = vacantRows.reduce((acc, r) => acc + (r.noOfVacant || 0), 0);
+    const totalPhDYearwiseSum = phdYearwiseList.reduce((acc, r) => acc + r.grandTotal, 0);
+
+    return {
+      id: "all",
+      slug: "all",
+      title: "All University Institutes & Departments",
+      code: "ALL DEPARTMENTS",
+      departmentCountLabel: `${liveInstitutes.length} INSTITUTES • DEPARTMENTS`,
+      image: "/Images/c1.webp",
+      description:
+        "Comprehensive research repository uniting all academic institutes, departments, research faculties, supervisor seat matrices, publications, patents, published books, and PhD degrees awarded across Shri Ramswaroop Memorial University.",
+      programs: Array.from(new Set(allPrograms)),
+      facultySupervisors: vacantRows,
+      totalPhDSeats: totalPhDSeats || 78,
+      totalDesignationLimit: totalDesignationLimit || 500,
+      totalAllottedSeats: totalAllottedSeats || 422,
+      totalVacantSeats: totalVacantSeats || 78,
+      researchPublications: papersList,
+      patents: patentsList,
+      books: booksList,
+      thesesAwarded: thesesList,
+      phdYearwiseAwarded: phdYearwiseList,
+      totalPhDYearwiseSum: totalPhDYearwiseSum || 249,
+    };
+  }
+
+  const liveInst = liveInstitutes.find(
+    (inst: any) =>
+      (inst.slug && inst.slug.toLowerCase() === clean) ||
+      (inst.code && inst.code.toLowerCase() === clean) ||
+      String(inst.id) === clean
+  );
+  const staticConfig = DEPARTMENTS_LIST.find(
+    (d) => d.id === clean || d.slug === clean || d.code.toLowerCase() === clean
+  );
+
+  if (!liveInst && !staticConfig) return null;
+
+  const slug = liveInst?.slug || staticConfig?.slug || clean;
+  const title = liveInst?.title || staticConfig?.title || "";
+  const code = liveInst?.code || staticConfig?.code || "";
+  const image = liveInst?.image || staticConfig?.image || "/Images/c1.webp";
+  const description = liveInst?.description || staticConfig?.description || "";
+  const departmentCountLabel = liveInst?.departmentCountLabel || staticConfig?.departmentCountLabel || "";
+
+  let programs: string[] = staticConfig?.programs || [];
+  if (liveInst?.programsJson) {
+    try {
+      const parsed = JSON.parse(liveInst.programsJson);
+      if (Array.isArray(parsed) && parsed.length > 0) programs = parsed;
+    } catch {}
+  }
+
+  let facultySupervisors = vacantRows.filter((r) => {
+    if (staticConfig?.vacantMatcher) return staticConfig.vacantMatcher(r);
+    return r.institute.toLowerCase().includes(code.toLowerCase()) || r.institute.toLowerCase().includes(title.toLowerCase());
+  });
+  if (facultySupervisors.length === 0 && staticConfig) {
+    facultySupervisors = VACANT_SEAT_DATA.filter(staticConfig.vacantMatcher);
+  }
+
+  const countedDepts = new Set<string>();
+  let totalPhDSeats = 0;
+  facultySupervisors.forEach((r) => {
+    const key = `${r.institute}_${r.department}`;
+    if (!countedDepts.has(key)) {
+      countedDepts.add(key);
+      if (r.totalPhD !== null) totalPhDSeats += r.totalPhD;
+    }
+  });
+  const totalDesignationLimit = facultySupervisors.reduce((acc, r) => acc + (r.designationSeatLimit || 0), 0);
+  const totalAllottedSeats = facultySupervisors.reduce((acc, r) => acc + (r.allottedSeat || 0), 0);
+  const totalVacantSeats = facultySupervisors.reduce((acc, r) => acc + (r.noOfVacant || 0), 0);
+
+  const paperCodes: string[] = staticConfig?.paperCodes || [code];
+  const researchPublications = papersList.filter((p: any) => {
+    const dept = (p.department || p.departmentKey || "").toLowerCase();
+    return paperCodes.some((c) => dept.includes(c.toLowerCase()));
+  });
+
+  const patentCodes: string[] = staticConfig?.patentCodes || [code];
+  const matchedPatents = patentsList.filter((pat: any) => {
+    const inv = (pat.patenterName || pat.authors || "").toLowerCase();
+    const tit = (pat.title || "").toLowerCase();
+    const num = (pat.patentNumber || pat.abstract || "").toLowerCase();
+    return patentCodes.some((c) => {
+      const lc = c.toLowerCase();
+      return inv.includes(lc) || tit.includes(lc) || num.includes(lc);
+    });
+  });
+
+  const bookCodes: string[] = staticConfig?.bookCodes || [code];
+  const matchedBooks = booksList.filter((b: any) => {
+    const aff = (b.affiliatingInstitute || "").toLowerCase();
+    const tch = (b.teacherName || b.authors || "").toLowerCase();
+    const tit = (b.bookOrChapterTitle || b.paperTitle || b.title || "").toLowerCase();
+    return bookCodes.some((c) => {
+      const lc = c.toLowerCase();
+      return aff.includes(lc) || tch.includes(lc) || tit.includes(lc);
+    });
+  });
+
+  let matchedTheses = thesesList.filter((t) => {
+    if (staticConfig?.thesisMatcher) return staticConfig.thesisMatcher(t);
+    return t.rawFacultyInstitute.toLowerCase().includes(title.toLowerCase()) || t.rawFacultyInstitute.toLowerCase().includes(code.toLowerCase());
+  });
+  if (matchedTheses.length === 0 && staticConfig) {
+    matchedTheses = THESIS_AWARDED_DATA.filter(staticConfig.thesisMatcher);
+  }
+
+  const phdYearwiseDeptCodes: string[] = staticConfig?.phdYearwiseDeptCodes || [code];
+  let matchedPhDYearwise = phdYearwiseList.filter(
+    (r) =>
+      r.instituteSlug === slug ||
+      (r.instituteSlug && r.instituteSlug.toLowerCase() === clean) ||
+      phdYearwiseDeptCodes.includes(r.departmentCode)
+  );
+  if (matchedPhDYearwise.length === 0 && staticConfig) {
+    matchedPhDYearwise = PHD_AWARDED_DATA.filter((r) =>
+      (staticConfig.phdYearwiseDeptCodes as string[]).includes(r.departmentCode)
+    );
+  }
+  const totalPhDYearwiseSum = matchedPhDYearwise.reduce((acc, r) => acc + r.grandTotal, 0);
+
+  return {
+    id: slug,
+    slug,
+    title,
+    code,
+    departmentCountLabel,
+    image,
+    description,
+    programs,
+    facultySupervisors,
+    totalPhDSeats,
+    totalDesignationLimit,
+    totalAllottedSeats,
+    totalVacantSeats,
+    researchPublications,
+    patents: matchedPatents,
+    books: matchedBooks,
+    thesesAwarded: matchedTheses,
+    phdYearwiseAwarded: matchedPhDYearwise,
+    totalPhDYearwiseSum,
+  };
+};
+

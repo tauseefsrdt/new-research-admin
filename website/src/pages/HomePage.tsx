@@ -22,40 +22,28 @@ import p6 from "../../public/Images/research-paper/P6.webp";
 import p7 from "../../public/Images/research-paper/P7.webp";
 import p8 from "../../public/Images/research-paper/P8.webp";
 
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { fetchDashboardStats } from "../store/slices/dashboardSlice";
+import { fetchGalleryImages } from "../store/slices/gallerySlice";
+import { fetchPatrons } from "../store/slices/patronSlice";
+import { fetchInstitutes } from "../store/slices/instituteSlice";
+import { fetchHeroProfileByKey } from "../store/slices/heroProfileSlice";
+import { DEPARTMENTS_LIST } from "../data/departmentData";
+
 gsap.registerPlugin(ScrollTrigger);
 
-const sliderItems = [
-  {
-    image: p1,
-
-  },
-  {
-    image: p2,
-  
-  },
-  {
-    image: p3,
-
-  },
-  {
-    image: p4,
-
-  },
-  {
-    image: p5,
-  },
-  {
-    image: p6,
-  },
-  {
-    image: p7,
-  },
-  {
-    image: p8,
-  },
+const defaultSliderItems = [
+  { image: p1 },
+  { image: p2 },
+  { image: p3 },
+  { image: p4 },
+  { image: p5 },
+  { image: p6 },
+  { image: p7 },
+  { image: p8 },
 ];
 
-const patronsList = [
+const defaultPatronsList = [
   {
     name: "Er. Pankaj Agarwal",
     role: "CHANCELLOR",
@@ -73,7 +61,7 @@ const patronsList = [
   },
 ];
 
-const coPatronsList = [
+const defaultCoPatronsList = [
   {
     name: "Prof. (Dr.) Hemendra Sharma",
     role: "REGISTRAR",
@@ -91,21 +79,19 @@ const coPatronsList = [
   },
 ];
 
-import { DEPARTMENTS_LIST } from "../data/departmentData";
-
-const institutes = DEPARTMENTS_LIST.map((dept) => ({
-  id: dept.id,
-  src: dept.image,
-  title: dept.title,
-  text: dept.description,
-  department: dept.departmentCountLabel,
-}));
-
 interface HomePageProps {
   onSearchOpen?: () => void;
 }
 
 function HomePage({ onSearchOpen }: HomePageProps) {
+  const dispatch = useAppDispatch();
+  const dashboardStats = useAppSelector((state) => state.dashboard.stats);
+  const galleryItems = useAppSelector((state) => state.gallery.items);
+  const reduxPatrons = useAppSelector((state) => state.patrons.patrons);
+  const reduxCoPatrons = useAppSelector((state) => state.patrons.coPatrons);
+  const reduxInstitutes = useAppSelector((state) => state.institutes.items);
+  const reduxHeroProfile = useAppSelector((state) => state.heroProfiles.activeProfile);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const statsRef = useRef<HTMLDivElement>(null);
@@ -113,9 +99,7 @@ function HomePage({ onSearchOpen }: HomePageProps) {
   const coPatronsRef = useRef<HTMLDivElement>(null);
   const institutesRef = useRef<HTMLDivElement>(null);
 
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [activeProfile] = useState("message");
+  const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Counter numerical values for GSAP counting animation
@@ -127,63 +111,81 @@ function HomePage({ onSearchOpen }: HomePageProps) {
   });
 
   const [displayCounts, setDisplayCounts] = useState({
-    indexed: 0,
-    papers: 0,
-    books: 0,
-    researchers: 0,
+    indexed: 195,
+    papers: 47,
+    books: 68,
+    researchers: 310,
   });
 
-  const profileData = [
-    {
-      key: "message",
-      label: "R&C Cell Message",
-      title: "Research & Consultancy Cell",
-      designation: "R&C Cell",
-      image: "Images/CEO-1.jpg",
-      excerpt:
-        "At Shri Ramswaroop Memorial University (SRMU) Barabanki, we believe that research and innovation are fundamental drivers of academic excellence, technological advancement, and societal progress.",
-      fullContent: [
-        <h1
-          key="welcome"
-          className="text-2xl font-bold text-charcoal-navy"
-        >
-          Welcomes you all!
-        </h1>,
-        "At Shri Ramswaroop Memorial University (SRMU) Barabanki, we believe that research and innovation are fundamental drivers of academic excellence, technological advancement, and societal progress. Our commitment is to cultivate a dynamic research ecosystem that empowers students, faculty members, and research scholars to transform ideas into impactful solutions.",
-        "The University has established state-of-the-art research and innovation facilities, including the AI Center of Excellence, Virtual Instrumentation Laboratory, Cadence Design Laboratory, PCB design Lab, Centre of Excellence (EV Lab), and the Innovation & Incubation Hub, which provide a robust platform for experimentation, product development, entrepreneurship, and interdisciplinary research. These facilities enable our researchers to engage with emerging technologies and address real-world challenges through innovative approaches.",
-        "A distinctive feature of SRMU's research framework is its emphasis on Experiment-Based Research. By integrating research-oriented projects into the learning process, we encourage researchers to develop critical thinking, problem-solving abilities, teamwork, and innovation skills. This approach bridges the gap between theoretical knowledge and practical application, preparing researchers to excel in both industry and academia.",
-        "The R&C cell actively promotes quality publications, industry collaborations, intellectual property creation, and startup incubation. R&C cell continuously strives to strengthen partnerships with academic institutions, research organizations, government agencies, and industry leaders to create opportunities for knowledge exchange and collaborative innovative research.",
-        "As we move forward in an era defined by rapid technological transformation, our focus remains on nurturing a culture of inquiry, creativity, ethical research practices, and entrepreneurial thinking. R&C Cell encourages research scholars and faculty members to explore new frontiers of knowledge and contribute meaningfully to national development and global progress.",
-        "R&C Cell invites you to explore the diverse research opportunities available at SRMU, Barabanki and become part of a community dedicated to excellence, innovation, and lifelong learning.",
-        "Together, let us create knowledge, inspire innovation, and shape a better future.",
-        <h1
-          key="research-cell"
-          className="text-2xl font-bold text-charcoal-navy"
-        >
-          Research and Consultancy Cell
-        </h1>,
-        "Shri Ramswaroop Memorial University, Barabanki",
-      ],
-    },
-  ];
-
-  const activeProfileData =
-    profileData.find((profile) => profile.key === activeProfile) ||
-    profileData[0];
-
   /* ----------------------------------
-     Data Loading
+     Data Loading via Redux Thunk
   ---------------------------------- */
   useEffect(() => {
-    try {
-      const statsData = getStats();
-      setStats(statsData);
-    } catch (err) {
-      console.error("Failed to load home page data:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    dispatch(fetchDashboardStats());
+    dispatch(fetchGalleryImages());
+    dispatch(fetchPatrons());
+    dispatch(fetchInstitutes());
+    dispatch(fetchHeroProfileByKey("message"));
+  }, [dispatch]);
+
+  // Derived slider items
+  const sliderItems = galleryItems.length > 0
+    ? galleryItems.map((g) => ({ image: g.src }))
+    : defaultSliderItems;
+
+  // Derived patrons
+  const patronsList = reduxPatrons.length > 0 ? reduxPatrons : defaultPatronsList;
+  const coPatronsList = reduxCoPatrons.length > 0 ? reduxCoPatrons : defaultCoPatronsList;
+
+  // Derived institutes
+  const institutes = reduxInstitutes.length > 0
+    ? reduxInstitutes.map((inst) => ({
+        id: inst.slug || `inst-${inst.id}`,
+        src: inst.image || "/Images/c1.webp",
+        title: inst.title,
+        text: inst.description || "",
+        department: inst.departmentCountLabel || `${inst.code || "SRMU"} DEPARTMENT`,
+      }))
+    : DEPARTMENTS_LIST.map((dept) => ({
+        id: dept.id,
+        src: dept.image,
+        title: dept.title,
+        text: dept.description,
+        department: dept.departmentCountLabel,
+      }));
+
+  const activeProfileData = {
+    key: "message",
+    label: reduxHeroProfile?.label || "R&C Cell Message",
+    title: reduxHeroProfile?.title || "Research & Consultancy Cell",
+    designation: reduxHeroProfile?.designation || "R&C Cell",
+    image: reduxHeroProfile?.image || "Images/CEO-1.jpg",
+    excerpt: reduxHeroProfile?.excerpt ||
+      "At Shri Ramswaroop Memorial University (SRMU) Barabanki, we believe that research and innovation are fundamental drivers of academic excellence, technological advancement, and societal progress.",
+    fullContent: [
+      <h1 key="welcome" className="text-2xl font-bold text-charcoal-navy">
+        Welcomes you all!
+      </h1>,
+      "At Shri Ramswaroop Memorial University (SRMU) Barabanki, we believe that research and innovation are fundamental drivers of academic excellence, technological advancement, and societal progress. Our commitment is to cultivate a dynamic research ecosystem that empowers students, faculty members, and research scholars to transform ideas into impactful solutions.",
+      "The University has established state-of-the-art research and innovation facilities, including the AI Center of Excellence, Virtual Instrumentation Laboratory, Cadence Design Laboratory, PCB design Lab, Centre of Excellence (EV Lab), and the Innovation & Incubation Hub, which provide a robust platform for experimentation, product development, entrepreneurship, and interdisciplinary research. These facilities enable our researchers to engage with emerging technologies and address real-world challenges through innovative approaches.",
+      "A distinctive feature of SRMU's research framework is its emphasis on Experiment-Based Research. By integrating research-oriented projects into the learning process, we encourage researchers to develop critical thinking, problem-solving abilities, teamwork, and innovation skills. This approach bridges the gap between theoretical knowledge and practical application, preparing researchers to excel in both industry and academia.",
+      "The R&C cell actively promotes quality publications, industry collaborations, intellectual property creation, and startup incubation. R&C cell continuously strives to strengthen partnerships with academic institutions, research organizations, government agencies, and industry leaders to create opportunities for knowledge exchange and collaborative innovative research.",
+      "As we move forward in an era defined by rapid technological transformation, our focus remains on nurturing a culture of inquiry, creativity, ethical research practices, and entrepreneurial thinking. R&C Cell encourages research scholars and faculty members to explore new frontiers of knowledge and contribute meaningfully to national development and global progress.",
+      "R&C Cell invites you to explore the diverse research opportunities available at SRMU, Barabanki and become part of a community dedicated to excellence, innovation, and lifelong learning.",
+      "Together, let us create knowledge, inspire innovation, and shape a better future.",
+      <h1 key="research-cell" className="text-2xl font-bold text-charcoal-navy">
+        Research and Consultancy Cell
+      </h1>,
+      "Shri Ramswaroop Memorial University, Barabanki",
+    ],
+  };
+
+  const stats = dashboardStats || {
+    totalIndexed: 195,
+    totalPapers: 47,
+    totalBooks: 68,
+    totalResearchers: 310,
+  };
 
   /* ----------------------------------
      Modal Escape Key

@@ -12,6 +12,8 @@ import {
   Layers,
 } from "lucide-react";
 import { gsap } from "gsap";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { fetchAllVacantSeats } from "../store/slices/vacantSeatSlice";
 import {
   VACANT_SEAT_DATA,
   VACANT_SEAT_TOTAL,
@@ -35,6 +37,9 @@ export default function VacantSeatView({
   badgeText = "Single Source of Truth: Vacant Seat.xlsx",
   badgeIcon,
 }: VacantSeatViewProps) {
+  const dispatch = useAppDispatch();
+  const reduxSeats = useAppSelector((state) => state.vacantSeats.allItems);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [searchQuery, setSearchQuery] = useState("");
@@ -45,13 +50,52 @@ export default function VacantSeatView({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
 
-  const institutes = useMemo(() => getUniqueInstitutes(), []);
-  const departments = useMemo(() => getUniqueDepartments(), []);
-  const designations = useMemo(() => getUniqueDesignations(), []);
+  useEffect(() => {
+    dispatch(fetchAllVacantSeats());
+  }, [dispatch]);
+
+  const rawData = reduxSeats.length > 0
+    ? reduxSeats.map((r: any, idx) => ({
+        id: r.id ?? idx + 1,
+        rowIndex: r.rowIndex ?? idx + 1,
+        institute: r.institute || "",
+        rawInstitute: r.rawInstitute || r.institute || "",
+        department: r.department || "",
+        rawDepartment: r.rawDepartment || r.department || "",
+        totalPhD: r.totalPhD ?? null,
+        rawTotalPhD: r.rawTotalPhD ?? r.totalPhD ?? null,
+        supervisorName: r.supervisorName || "",
+        rawSupervisorName: r.rawSupervisorName || r.supervisorName || "",
+        designation: r.designation || "",
+        rawDesignation: r.rawDesignation || r.designation || "",
+        designationSeatLimit: r.designationSeatLimit ?? 0,
+        allottedSeat: r.allottedSeat ?? 0,
+        noOfVacant: r.noOfVacant ?? 0,
+      }))
+    : VACANT_SEAT_DATA;
+
+  const institutes = useMemo(() => {
+    const set = new Set<string>();
+    rawData.forEach((r) => { if (r.institute) set.add(r.institute); });
+    return Array.from(set).sort();
+  }, [rawData]);
+
+  const departments = useMemo(() => {
+    const set = new Set<string>();
+    rawData.forEach((r) => { if (r.department) set.add(r.department); });
+    return Array.from(set).sort();
+  }, [rawData]);
+
+  const designations = useMemo(() => {
+    const set = new Set<string>();
+    rawData.forEach((r) => { if (r.designation) set.add(r.designation); });
+    return Array.from(set).sort();
+  }, [rawData]);
 
   // Filtered records
   const filteredData = useMemo(() => {
-    return VACANT_SEAT_DATA.filter((row) => {
+    return rawData.filter((row) => {
+
       // Search
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();

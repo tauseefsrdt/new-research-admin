@@ -5,17 +5,21 @@ import { gsap } from 'gsap';
 import PaperCard from '../components/patentsCard';
 import Pagination from '../components/Pagination';
 import PdfModal from '../components/PdfModal';
-import { getPatents, getDepartments } from '../data/researchService';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { fetchPatents } from '../store/slices/patentSlice';
+import { fetchDepartmentCounts } from '../store/slices/researchPaperSlice';
 import { Patent, Department } from '../types';
 
 function PapersPage() {
+  const dispatch = useAppDispatch();
+  const reduxPatents = useAppSelector((state) => state.patents.items);
+  const reduxCount = useAppSelector((state) => state.patents.totalElements);
+  const reduxLoading = useAppSelector((state) => state.patents.loading);
+  const reduxDepartments = useAppSelector((state) => state.researchPapers.departments);
+
   const pageRef = useRef<HTMLDivElement>(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [papers, setPapers] = useState<Patent[]>([]);
-  const [count, setCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [departments, setDepartments] = useState<Department[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedPdf, setSelectedPdf] = useState<{ url: string; title?: string; subtitle?: string } | null>(null);
   const ITEMS_PER_PAGE = 9;
@@ -39,25 +43,44 @@ function PapersPage() {
   const resetFilters = () => setSearchParams({}, { replace: true });
 
   useEffect(() => {
-    try {
-      setDepartments(getDepartments());
-    } catch (err) {
-      console.error('Error getting departments:', err);
-    }
-  }, []);
+    dispatch(fetchDepartmentCounts());
+  }, [dispatch]);
 
   useEffect(() => {
-    setLoading(true);
-    try {
-      const data = getPatents({ search, department: selectedDept, year: selectedYear });
-      setPapers(data.patents || []);
-      setCount(data.count || 0);
-    } catch (err) {
-      console.error('Error fetching papers:', err);
-    } finally {
-      setLoading(false);
+    dispatch(
+      fetchPatents({
+        search: search.trim() || undefined,
+        year: selectedYear || undefined,
+        size: 1000,
+      })
+    );
+  }, [dispatch, search, selectedDept, selectedYear]);
+
+  // Map & filter patents with department matching
+  const mappedPatents: Patent[] = reduxPatents.map((p: any) => ({
+    ...p,
+    id: p.id || p.srNo,
+    authors: p.patenterName || p.authors,
+    year: p.yearOfAward || p.year,
+    abstract: p.patentNumber || p.abstractText,
+  }));
+
+  const papers = mappedPatents.filter((item) => {
+    if (selectedDept && selectedDept !== 'All') {
+      const deptTerm = selectedDept.toLowerCase();
+      const matchDept =
+        (item.authors && String(item.authors).toLowerCase().includes(deptTerm)) ||
+        (item.title && item.title.toLowerCase().includes(deptTerm)) ||
+        (item.abstract && item.abstract.toLowerCase().includes(deptTerm));
+      if (!matchDept) return false;
     }
-  }, [search, selectedDept, selectedYear]);
+    return true;
+  });
+
+  const count = papers.length;
+  const loading = reduxLoading;
+  const departments = reduxDepartments;
+
 
   // Page entrance animation
   useEffect(() => {

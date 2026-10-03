@@ -2,41 +2,54 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bookmark, Search, RefreshCw, Loader2 } from 'lucide-react';
 import { gsap } from 'gsap';
 import ResearchCard from '../components/ResearchCard';
-import { getResearchPapers, getDepartments } from '../data/researchService';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { fetchResearchPapers, fetchDepartmentCounts } from '../store/slices/researchPaperSlice';
 import { ResearchPaper, Department } from '../types';
 
 function IndexedPage() {
+  const dispatch = useAppDispatch();
+  const reduxPapers = useAppSelector((state) => state.researchPapers.items);
+  const reduxCount = useAppSelector((state) => state.researchPapers.totalElements);
+  const reduxLoading = useAppSelector((state) => state.researchPapers.loading);
+  const reduxDepartments = useAppSelector((state) => state.researchPapers.departments);
+
   const pageRef = useRef<HTMLDivElement>(null);
-  const [papers, setPapers] = useState<ResearchPaper[]>([]);
-  const [count, setCount] = useState(0);
-  const [loading, setLoading] = useState(true);
   
   // Filters
   const [search, setSearch] = useState('');
   const [selectedDept, setSelectedDept] = useState('All');
   const [selectedYear, setSelectedYear] = useState('');
-  const [departments, setDepartments] = useState<Department[]>([]);
 
   useEffect(() => {
-    try {
-      setDepartments(getDepartments());
-    } catch (err) {
-      console.error('Error getting departments:', err);
-    }
-  }, []);
+    dispatch(fetchDepartmentCounts());
+  }, [dispatch]);
 
   useEffect(() => {
-    setLoading(true);
-    try {
-      const data = getResearchPapers({ search, department: selectedDept, year: selectedYear });
-      setPapers(data.papers || []);
-      setCount(data.count || 0);
-    } catch (err) {
-      console.error('Error fetching indexed journals:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [search, selectedDept, selectedYear]);
+    dispatch(
+      fetchResearchPapers({
+        search: search.trim() || undefined,
+        department: selectedDept !== 'All' ? selectedDept : undefined,
+        year: selectedYear || undefined,
+        size: 1000,
+      })
+    );
+  }, [dispatch, search, selectedDept, selectedYear]);
+
+  const papers = reduxPapers.map((paper: any) => ({
+    ...paper,
+    id: paper.id || paper.srNo,
+    authors: paper.authorName || paper.authors,
+    departmentKey: paper.departmentKey || paper.department,
+    journal: paper.journalName || paper.journal,
+    year: paper.yearOfPublication || paper.year,
+    abstract: paper.issnNumber || paper.abstractText,
+    doi: paper.ugcRecognitionLink || paper.doi,
+  }));
+
+  const count = reduxCount || papers.length;
+  const loading = reduxLoading;
+  const departments = reduxDepartments;
+
 
   // Page entrance animation
   useEffect(() => {

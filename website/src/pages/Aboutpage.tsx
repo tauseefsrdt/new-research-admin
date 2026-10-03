@@ -12,32 +12,48 @@ import {
 } from 'lucide-react';
 import { gsap } from 'gsap';
 
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { fetchLeaderships } from '../store/slices/leadershipSlice';
+import { fetchGalleryImages } from '../store/slices/gallerySlice';
+
+const defaultLeadership = [
+  {
+    name: 'Prof. (Dr.) Nabeel Ahmad',
+    role: 'Director (Research)',
+    email: 'director.research@srmu.ac.in',
+    tag: 'Leadership',
+    image: '/about/Nabeel Ahmad.png',
+  },
+  {
+    name: 'Prof. (Dr.) Alkesh Agrawal',
+    role: 'Deputy Director (Research)',
+    email: 'dd.research@srmu.ac.in',
+    tag: 'Administration',
+    image: '/about/Alkesh Agrawal.png',
+  },
+  {
+    name: 'Dr. Shailendra Bisht',
+    role: 'Asstt. Registrar (Research)',
+    email: 'research@srmu.ac.in',
+    tag: 'Coordination',
+    image: '/about/Shailendra Bisht.png',
+  },
+];
+
 function Aboutpage() {
+  const dispatch = useAppDispatch();
+  const reduxLeadership = useAppSelector((state) => state.leaderships.items);
+  const reduxGallery = useAppSelector((state) => state.gallery.items);
+
   const pageRef = useRef<HTMLDivElement>(null);
 
-  const leadership = [
-    {
-      name: 'Prof. (Dr.) Nabeel Ahmad',
-      role: 'Director (Research)',
-      email: 'director.research@srmu.ac.in',
-      tag: 'Leadership',
-      image: '/about/Nabeel Ahmad.png',
-    },
-    {
-      name: 'Prof. (Dr.) Alkesh Agrawal',
-      role: 'Deputy Director (Research)',
-      email: 'dd.research@srmu.ac.in',
-      tag: 'Administration',
-      image: '/about/Alkesh Agrawal.png',
-    },
-    {
-      name: 'Dr. Shailendra Bisht',
-      role: 'Asstt. Registrar (Research)',
-      email: 'research@srmu.ac.in',
-      tag: 'Coordination',
-      image: '/about/Shailendra Bisht.png',
-    },
-  ];
+  useEffect(() => {
+    dispatch(fetchLeaderships());
+    dispatch(fetchGalleryImages());
+  }, [dispatch]);
+
+  const leadership = reduxLeadership.length > 0 ? reduxLeadership : defaultLeadership;
+
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia(
