@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { fetchDashboardStats } from '../store/slices/dashboardSlice';
+import DashboardSkeleton from '../components/skeleton/DashboardSkeleton';
+import { showErrorToast } from '../utils/toast';
 import {
   Lightbulb,
   FileText,
@@ -21,11 +23,19 @@ import Badge from '../components/common/Badge';
 
 export default function DashboardPage() {
   const dispatch = useDispatch();
-  const { stats, loading } = useSelector((state) => state.dashboard);
+  const { stats, loading, error } = useSelector((state) => state.dashboard);
 
   useEffect(() => {
-    dispatch(fetchDashboardStats());
+    dispatch(fetchDashboardStats())
+      .unwrap()
+      .catch((err) => {
+        showErrorToast(err, { defaultMessage: 'Failed to fetch dashboard statistics' });
+      });
   }, [dispatch]);
+
+  if (loading && !stats) {
+    return <DashboardSkeleton />;
+  }
 
   const statCards = [
     {

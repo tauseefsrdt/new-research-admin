@@ -1,6 +1,8 @@
 import React from 'react';
 import { Search, ChevronLeft, ChevronRight, Plus, Filter, RefreshCw } from 'lucide-react';
 
+import TableSkeleton from '../skeleton/TableSkeleton';
+
 export default function DataTable({
   title,
   subtitle,
@@ -40,7 +42,7 @@ export default function DataTable({
             <button
               onClick={onRefresh}
               disabled={loading}
-              className="p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+              className="p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
               title="Refresh"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-[#0A4A8F]' : ''}`} />
@@ -50,7 +52,7 @@ export default function DataTable({
           {onAddNew && (
             <button
               onClick={onAddNew}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0A4A8F] hover:bg-[#0C2F44] text-white text-sm font-medium shadow-sm hover:shadow transition-all"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0A4A8F] hover:bg-[#0C2F44] text-white text-sm font-medium shadow-sm hover:shadow transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>{addNewLabel}</span>
@@ -84,7 +86,7 @@ export default function DataTable({
                 <select
                   value={f.value}
                   onChange={(e) => f.onChange(e.target.value)}
-                  className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0A4A8F]/20 focus:border-[#0A4A8F] transition-all"
+                  className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0A4A8F]/20 focus:border-[#0A4A8F] transition-all cursor-pointer"
                 >
                   {f.options.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -116,14 +118,10 @@ export default function DataTable({
           </thead>
           <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
             {loading ? (
-              <tr>
-                <td colSpan={columns.length} className="py-16 text-center">
-                  <div className="inline-flex flex-col items-center gap-3">
-                    <div className="w-8 h-8 border-3 border-[#0A4A8F] border-t-transparent rounded-full animate-spin" />
-                    <span className="text-sm font-medium text-slate-500">Loading records...</span>
-                  </div>
-                </td>
-              </tr>
+              <TableSkeleton
+                rows={Math.min(pageSize || 6, 8)}
+                columns={columns.length}
+              />
             ) : data.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="py-16 text-center">

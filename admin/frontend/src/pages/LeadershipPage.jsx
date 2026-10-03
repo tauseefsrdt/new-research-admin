@@ -12,6 +12,7 @@ import Modal from '../components/common/Modal';
 import ConfirmModal from '../components/common/ConfirmModal';
 import { Edit2, Trash2, Mail, Building2, User } from 'lucide-react';
 import { formatImageUrl } from '../utils/imageUtils';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
 
 export default function LeadershipPage() {
   const dispatch = useDispatch();
@@ -95,20 +96,31 @@ export default function LeadershipPage() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (selectedLeader) {
-      await dispatch(updateLeadership({ id: selectedLeader.id, data: formData }));
-    } else {
-      await dispatch(createLeadership(formData));
+    try {
+      if (selectedLeader) {
+        await dispatch(updateLeadership({ id: selectedLeader.id, data: formData })).unwrap();
+        showSuccessToast('Leadership member updated successfully');
+      } else {
+        await dispatch(createLeadership(formData)).unwrap();
+        showSuccessToast('Leadership member created successfully');
+      }
+      setIsModalOpen(false);
+      loadData(pageNumber);
+    } catch (err) {
+      showErrorToast(err, { defaultMessage: selectedLeader ? 'Failed to update leadership member' : 'Failed to create leadership member' });
     }
-    setIsModalOpen(false);
-    loadData(pageNumber);
   };
 
   const handleDelete = async () => {
     if (leaderToDelete) {
-      await dispatch(deleteLeadership(leaderToDelete.id));
-      setIsDeleteModalOpen(false);
-      setLeaderToDelete(null);
+      try {
+        await dispatch(deleteLeadership(leaderToDelete.id)).unwrap();
+        showSuccessToast('Leadership member deleted successfully');
+        setIsDeleteModalOpen(false);
+        setLeaderToDelete(null);
+      } catch (err) {
+        showErrorToast(err, { defaultMessage: 'Failed to delete leadership member' });
+      }
     }
   };
 

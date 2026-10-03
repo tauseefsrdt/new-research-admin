@@ -14,6 +14,7 @@ import { Edit2, Trash2, Building2, GraduationCap, Plus, X, Code2, List } from 'l
 
 import { formatImageUrl } from '../utils/imageUtils';
 import ImageUpload from '../components/common/ImageUpload';
+import { showSuccessToast, showErrorToast, showWarningToast } from '../utils/toast';
 
 export default function InstitutesPage() {
 
@@ -71,6 +72,8 @@ export default function InstitutesPage() {
     if (!current.includes(trimmed)) {
       const updated = [...current, trimmed];
       setFormData((prev) => ({ ...prev, programsJson: JSON.stringify(updated) }));
+    } else {
+      showWarningToast('This program already exists in the list.');
     }
     setNewProgramInput('');
   };
@@ -150,24 +153,31 @@ export default function InstitutesPage() {
           ...formData,
         };
         await dispatch(updateInstitute({ id: selectedInstitute.id, data: payload })).unwrap();
+        showSuccessToast('Institute updated successfully');
         setIsModalOpen(false);
         loadData(pageNumber);
       } else {
         await dispatch(createInstitute(formData)).unwrap();
+        showSuccessToast('Institute created successfully');
         setIsModalOpen(false);
         loadData(0);
       }
     } catch (err) {
       console.error('Failed to save institute:', err);
-      alert('Error saving institute: ' + (typeof err === 'string' ? err : err?.message || 'Server error'));
+      showErrorToast(err, { defaultMessage: 'Failed to save institute' });
     }
   };
 
   const handleDelete = async () => {
     if (instituteToDelete) {
-      await dispatch(deleteInstitute(instituteToDelete.id));
-      setIsDeleteModalOpen(false);
-      setInstituteToDelete(null);
+      try {
+        await dispatch(deleteInstitute(instituteToDelete.id)).unwrap();
+        showSuccessToast('Institute deleted successfully');
+        setIsDeleteModalOpen(false);
+        setInstituteToDelete(null);
+      } catch (err) {
+        showErrorToast(err, { defaultMessage: 'Failed to delete institute' });
+      }
     }
   };
 

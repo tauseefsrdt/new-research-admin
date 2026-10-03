@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { loginUser, clearAuthError } from '../store/slices/authSlice';
+import { showSuccessToast, showErrorToast, showWarningToast } from '../utils/toast';
 import { GraduationCap, Lock, User, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export default function LoginPage() {
@@ -21,10 +22,19 @@ export default function LoginPage() {
     };
   }, [isAuthenticated, navigate, dispatch]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!username || !password) return;
-    dispatch(loginUser({ username, password }));
+    if (!username.trim() || !password.trim()) {
+      showWarningToast('Please enter both username and password.');
+      return;
+    }
+
+    try {
+      const result = await dispatch(loginUser({ username: username.trim(), password })).unwrap();
+      showSuccessToast(`Welcome back, ${result.user?.fullName || result.user?.username || 'Administrator'}!`);
+    } catch (err) {
+      showErrorToast(err, { defaultMessage: 'Invalid username or password' });
+    }
   };
 
   return (

@@ -12,6 +12,7 @@ import Modal from '../components/common/Modal';
 import ConfirmModal from '../components/common/ConfirmModal';
 import { Edit2, Trash2, Crown, User } from 'lucide-react';
 import { formatImageUrl } from '../utils/imageUtils';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
 
 export default function PatronsPage() {
   const dispatch = useDispatch();
@@ -91,20 +92,31 @@ export default function PatronsPage() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (selectedPatron) {
-      await dispatch(updatePatron({ id: selectedPatron.id, data: formData }));
-    } else {
-      await dispatch(createPatron(formData));
+    try {
+      if (selectedPatron) {
+        await dispatch(updatePatron({ id: selectedPatron.id, data: formData })).unwrap();
+        showSuccessToast('Patron record updated successfully');
+      } else {
+        await dispatch(createPatron(formData)).unwrap();
+        showSuccessToast('Patron record created successfully');
+      }
+      setIsModalOpen(false);
+      loadData(pageNumber);
+    } catch (err) {
+      showErrorToast(err, { defaultMessage: selectedPatron ? 'Failed to update patron' : 'Failed to create patron' });
     }
-    setIsModalOpen(false);
-    loadData(pageNumber);
   };
 
   const handleDelete = async () => {
     if (patronToDelete) {
-      await dispatch(deletePatron(patronToDelete.id));
-      setIsDeleteModalOpen(false);
-      setPatronToDelete(null);
+      try {
+        await dispatch(deletePatron(patronToDelete.id)).unwrap();
+        showSuccessToast('Patron record deleted successfully');
+        setIsDeleteModalOpen(false);
+        setPatronToDelete(null);
+      } catch (err) {
+        showErrorToast(err, { defaultMessage: 'Failed to delete patron record' });
+      }
     }
   };
 

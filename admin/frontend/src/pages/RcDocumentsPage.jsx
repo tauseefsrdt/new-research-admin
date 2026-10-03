@@ -11,7 +11,8 @@ import Badge from '../components/common/Badge';
 import Modal from '../components/common/Modal';
 import ConfirmModal from '../components/common/ConfirmModal';
 import PdfUpload from '../components/common/PdfUpload';
-import { Edit2, Trash2, Download, FileText } from 'lucide-react';
+import { Edit2, Trash2, FileText } from 'lucide-react';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
 
 export default function RcDocumentsPage() {
   const dispatch = useDispatch();
@@ -97,20 +98,31 @@ export default function RcDocumentsPage() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (selectedDoc) {
-      await dispatch(updateRcDocument({ id: selectedDoc.id, data: formData }));
-    } else {
-      await dispatch(createRcDocument(formData));
+    try {
+      if (selectedDoc) {
+        await dispatch(updateRcDocument({ id: selectedDoc.id, data: formData })).unwrap();
+        showSuccessToast('R&C Document updated successfully');
+      } else {
+        await dispatch(createRcDocument(formData)).unwrap();
+        showSuccessToast('R&C Document created successfully');
+      }
+      setIsModalOpen(false);
+      loadData(pageNumber);
+    } catch (err) {
+      showErrorToast(err, { defaultMessage: selectedDoc ? 'Failed to update document' : 'Failed to create document' });
     }
-    setIsModalOpen(false);
-    loadData(pageNumber);
   };
 
   const handleDelete = async () => {
     if (docToDelete) {
-      await dispatch(deleteRcDocument(docToDelete.id));
-      setIsDeleteModalOpen(false);
-      setDocToDelete(null);
+      try {
+        await dispatch(deleteRcDocument(docToDelete.id)).unwrap();
+        showSuccessToast('R&C Document deleted successfully');
+        setIsDeleteModalOpen(false);
+        setDocToDelete(null);
+      } catch (err) {
+        showErrorToast(err, { defaultMessage: 'Failed to delete document' });
+      }
     }
   };
 

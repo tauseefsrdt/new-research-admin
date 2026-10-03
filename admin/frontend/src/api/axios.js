@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { showErrorToast } from '../utils/toast';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
@@ -26,8 +27,11 @@ api.interceptors.response.use(
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       if (window.location.pathname !== '/login') {
+        showErrorToast('Session expired. Please log in again.', { toastId: 'session-expired' });
         window.location.href = '/login';
       }
+    } else if (error.code === 'ERR_NETWORK' || !error.response) {
+      showErrorToast('Network error: Unable to connect to backend server.', { toastId: 'network-error' });
     }
     return Promise.reject(error);
   }

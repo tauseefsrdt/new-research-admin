@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Menu, LogOut, User, Search, Bell, Sparkles } from 'lucide-react';
 import { logout } from '../../store/slices/authSlice';
 import { useNavigate } from 'react-router-dom';
+import { showInfoToast } from '../../utils/toast';
 
 export default function Header({ onMenuToggle }) {
   const dispatch = useDispatch();
@@ -12,6 +13,7 @@ export default function Header({ onMenuToggle }) {
 
   const handleLogout = () => {
     dispatch(logout());
+    showInfoToast('You have been logged out.');
     navigate('/login');
   };
 

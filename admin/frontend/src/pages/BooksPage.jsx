@@ -10,7 +10,8 @@ import DataTable from '../components/common/DataTable';
 import Badge from '../components/common/Badge';
 import Modal from '../components/common/Modal';
 import ConfirmModal from '../components/common/ConfirmModal';
-import { Edit2, Trash2, BookOpen } from 'lucide-react';
+import { Edit2, Trash2 } from 'lucide-react';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
 
 export default function BooksPage() {
   const dispatch = useDispatch();
@@ -100,22 +101,33 @@ export default function BooksPage() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (selectedBook) {
-      await dispatch(updateBook({ id: selectedBook.id, data: formData }));
-      setIsModalOpen(false);
-      loadData(pageNumber);
-    } else {
-      await dispatch(createBook(formData));
-      setIsModalOpen(false);
-      loadData(0);
+    try {
+      if (selectedBook) {
+        await dispatch(updateBook({ id: selectedBook.id, data: formData })).unwrap();
+        showSuccessToast('Book / Chapter updated successfully');
+        setIsModalOpen(false);
+        loadData(pageNumber);
+      } else {
+        await dispatch(createBook(formData)).unwrap();
+        showSuccessToast('Book / Chapter created successfully');
+        setIsModalOpen(false);
+        loadData(0);
+      }
+    } catch (err) {
+      showErrorToast(err, { defaultMessage: selectedBook ? 'Failed to update book' : 'Failed to create book' });
     }
   };
 
   const handleDelete = async () => {
     if (bookToDelete) {
-      await dispatch(deleteBook(bookToDelete.id));
-      setIsDeleteModalOpen(false);
-      setBookToDelete(null);
+      try {
+        await dispatch(deleteBook(bookToDelete.id)).unwrap();
+        showSuccessToast('Book / Chapter deleted successfully');
+        setIsDeleteModalOpen(false);
+        setBookToDelete(null);
+      } catch (err) {
+        showErrorToast(err, { defaultMessage: 'Failed to delete book' });
+      }
     }
   };
 

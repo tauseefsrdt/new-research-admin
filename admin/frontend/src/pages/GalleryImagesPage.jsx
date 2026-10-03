@@ -12,6 +12,7 @@ import Modal from '../components/common/Modal';
 import ConfirmModal from '../components/common/ConfirmModal';
 import { Edit2, Trash2, Image, ImageOff } from 'lucide-react';
 import { formatImageUrl } from '../utils/imageUtils';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
 
 export default function GalleryImagesPage() {
   const dispatch = useDispatch();
@@ -89,20 +90,31 @@ export default function GalleryImagesPage() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (selectedImage) {
-      await dispatch(updateGalleryImage({ id: selectedImage.id, data: formData }));
-    } else {
-      await dispatch(createGalleryImage(formData));
+    try {
+      if (selectedImage) {
+        await dispatch(updateGalleryImage({ id: selectedImage.id, data: formData })).unwrap();
+        showSuccessToast('Gallery image updated successfully');
+      } else {
+        await dispatch(createGalleryImage(formData)).unwrap();
+        showSuccessToast('Gallery image added successfully');
+      }
+      setIsModalOpen(false);
+      loadData(pageNumber);
+    } catch (err) {
+      showErrorToast(err, { defaultMessage: selectedImage ? 'Failed to update gallery image' : 'Failed to add gallery image' });
     }
-    setIsModalOpen(false);
-    loadData(pageNumber);
   };
 
   const handleDelete = async () => {
     if (imageToDelete) {
-      await dispatch(deleteGalleryImage(imageToDelete.id));
-      setIsDeleteModalOpen(false);
-      setImageToDelete(null);
+      try {
+        await dispatch(deleteGalleryImage(imageToDelete.id)).unwrap();
+        showSuccessToast('Gallery image deleted successfully');
+        setIsDeleteModalOpen(false);
+        setImageToDelete(null);
+      } catch (err) {
+        showErrorToast(err, { defaultMessage: 'Failed to delete gallery image' });
+      }
     }
   };
 

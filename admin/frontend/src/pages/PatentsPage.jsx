@@ -12,6 +12,7 @@ import Modal from '../components/common/Modal';
 import ConfirmModal from '../components/common/ConfirmModal';
 import PdfUpload from '../components/common/PdfUpload';
 import { Edit2, Trash2, ExternalLink, Star, FileText } from 'lucide-react';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
 
 export default function PatentsPage() {
   const dispatch = useDispatch();
@@ -104,22 +105,33 @@ export default function PatentsPage() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (selectedPatent) {
-      await dispatch(updatePatent({ id: selectedPatent.id, data: formData }));
-      setIsModalOpen(false);
-      loadData(pageNumber);
-    } else {
-      await dispatch(createPatent(formData));
-      setIsModalOpen(false);
-      loadData(0);
+    try {
+      if (selectedPatent) {
+        await dispatch(updatePatent({ id: selectedPatent.id, data: formData })).unwrap();
+        showSuccessToast('Patent updated successfully');
+        setIsModalOpen(false);
+        loadData(pageNumber);
+      } else {
+        await dispatch(createPatent(formData)).unwrap();
+        showSuccessToast('Patent created successfully');
+        setIsModalOpen(false);
+        loadData(0);
+      }
+    } catch (err) {
+      showErrorToast(err, { defaultMessage: selectedPatent ? 'Failed to update patent' : 'Failed to create patent' });
     }
   };
 
   const handleDelete = async () => {
     if (patentToDelete) {
-      await dispatch(deletePatent(patentToDelete.id));
-      setIsDeleteModalOpen(false);
-      setPatentToDelete(null);
+      try {
+        await dispatch(deletePatent(patentToDelete.id)).unwrap();
+        showSuccessToast('Patent deleted successfully');
+        setIsDeleteModalOpen(false);
+        setPatentToDelete(null);
+      } catch (err) {
+        showErrorToast(err, { defaultMessage: 'Failed to delete patent' });
+      }
     }
   };
 

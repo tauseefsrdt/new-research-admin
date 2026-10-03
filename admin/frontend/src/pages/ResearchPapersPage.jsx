@@ -11,7 +11,8 @@ import DataTable from '../components/common/DataTable';
 import Badge from '../components/common/Badge';
 import Modal from '../components/common/Modal';
 import ConfirmModal from '../components/common/ConfirmModal';
-import { Edit2, Trash2, ExternalLink, Star } from 'lucide-react';
+import { Edit2, Trash2 } from 'lucide-react';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
 
 export default function ResearchPapersPage() {
   const dispatch = useDispatch();
@@ -108,22 +109,33 @@ export default function ResearchPapersPage() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (selectedPaper) {
-      await dispatch(updateResearchPaper({ id: selectedPaper.id, data: formData }));
-      setIsModalOpen(false);
-      loadData(pageNumber);
-    } else {
-      await dispatch(createResearchPaper(formData));
-      setIsModalOpen(false);
-      loadData(0);
+    try {
+      if (selectedPaper) {
+        await dispatch(updateResearchPaper({ id: selectedPaper.id, data: formData })).unwrap();
+        showSuccessToast('Publication updated successfully');
+        setIsModalOpen(false);
+        loadData(pageNumber);
+      } else {
+        await dispatch(createResearchPaper(formData)).unwrap();
+        showSuccessToast('Publication created successfully');
+        setIsModalOpen(false);
+        loadData(0);
+      }
+    } catch (err) {
+      showErrorToast(err, { defaultMessage: selectedPaper ? 'Failed to update publication' : 'Failed to create publication' });
     }
   };
 
   const handleDelete = async () => {
     if (paperToDelete) {
-      await dispatch(deleteResearchPaper(paperToDelete.id));
-      setIsDeleteModalOpen(false);
-      setPaperToDelete(null);
+      try {
+        await dispatch(deleteResearchPaper(paperToDelete.id)).unwrap();
+        showSuccessToast('Publication deleted successfully');
+        setIsDeleteModalOpen(false);
+        setPaperToDelete(null);
+      } catch (err) {
+        showErrorToast(err, { defaultMessage: 'Failed to delete publication' });
+      }
     }
   };
 

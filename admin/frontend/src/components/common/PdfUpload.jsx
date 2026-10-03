@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { UploadCloud, FileText, Trash2, CheckCircle2, AlertCircle, RefreshCw, ExternalLink } from 'lucide-react';
 import { uploadPdf, deleteUploadedPdf } from '../../api/uploadApi';
+import { showSuccessToast, showErrorToast, showWarningToast, showInfoToast } from '../../utils/toast';
 
 /**
  * Reusable PDF Upload & Update Component
@@ -30,12 +31,16 @@ export default function PdfUpload({
     setError('');
     const extension = file.name.split('.').pop()?.toLowerCase();
     if (extension !== 'pdf' && file.type !== 'application/pdf') {
-      setError('Invalid file type. Please upload a valid PDF document (.pdf).');
+      const msg = 'Invalid file type. Please upload a valid PDF document (.pdf).';
+      setError(msg);
+      showWarningToast(msg);
       return;
     }
 
     if (file.size > 50 * 1024 * 1024) {
-      setError('File size exceeds 50MB limit.');
+      const msg = 'File size exceeds 50MB limit.';
+      setError(msg);
+      showWarningToast(msg);
       return;
     }
 
@@ -48,10 +53,13 @@ export default function PdfUpload({
       if (result && result.url) {
         onChange(result.url);
         setSelectedFileName('');
+        showSuccessToast('PDF document uploaded successfully');
       }
     } catch (err) {
       console.error('Failed to upload PDF:', err);
-      setError(err.response?.data?.message || err.message || 'PDF upload failed.');
+      const errMsg = err.response?.data?.message || err.message || 'PDF upload failed.';
+      setError(errMsg);
+      showErrorToast(err, { defaultMessage: 'Failed to upload PDF' });
       setSelectedFileName('');
     } finally {
       setUploading(false);
@@ -98,6 +106,7 @@ export default function PdfUpload({
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+    showInfoToast('PDF removed');
   };
 
   const displayFilename = value ? value.split('/').pop() : '';

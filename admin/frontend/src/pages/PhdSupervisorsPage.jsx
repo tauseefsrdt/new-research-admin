@@ -11,6 +11,7 @@ import Badge from '../components/common/Badge';
 import Modal from '../components/common/Modal';
 import ConfirmModal from '../components/common/ConfirmModal';
 import { Edit2, Trash2 } from 'lucide-react';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
 
 export default function PhdSupervisorsPage() {
   const dispatch = useDispatch();
@@ -93,20 +94,31 @@ export default function PhdSupervisorsPage() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (selectedSupervisor) {
-      await dispatch(updatePhdSupervisor({ id: selectedSupervisor.id, data: formData }));
-    } else {
-      await dispatch(createPhdSupervisor(formData));
+    try {
+      if (selectedSupervisor) {
+        await dispatch(updatePhdSupervisor({ id: selectedSupervisor.id, data: formData })).unwrap();
+        showSuccessToast('Ph.D Supervisor record updated successfully');
+      } else {
+        await dispatch(createPhdSupervisor(formData)).unwrap();
+        showSuccessToast('Ph.D Supervisor record created successfully');
+      }
+      setIsModalOpen(false);
+      loadData(pageNumber);
+    } catch (err) {
+      showErrorToast(err, { defaultMessage: selectedSupervisor ? 'Failed to update supervisor record' : 'Failed to create supervisor record' });
     }
-    setIsModalOpen(false);
-    loadData(pageNumber);
   };
 
   const handleDelete = async () => {
     if (supervisorToDelete) {
-      await dispatch(deletePhdSupervisor(supervisorToDelete.id));
-      setIsDeleteModalOpen(false);
-      setSupervisorToDelete(null);
+      try {
+        await dispatch(deletePhdSupervisor(supervisorToDelete.id)).unwrap();
+        showSuccessToast('Ph.D Supervisor record deleted successfully');
+        setIsDeleteModalOpen(false);
+        setSupervisorToDelete(null);
+      } catch (err) {
+        showErrorToast(err, { defaultMessage: 'Failed to delete supervisor record' });
+      }
     }
   };
 

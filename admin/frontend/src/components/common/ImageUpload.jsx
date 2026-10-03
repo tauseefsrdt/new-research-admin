@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { UploadCloud, Image as ImageIcon, Trash2, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { uploadImage } from '../../api/uploadApi';
 import { formatImageUrl } from '../../utils/imageUtils';
+import { showSuccessToast, showErrorToast, showWarningToast, showInfoToast } from '../../utils/toast';
 
 /**
  * Reusable Image Upload Component
@@ -41,12 +42,16 @@ export default function ImageUpload({
     setError('');
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     if (!validTypes.includes(file.type.toLowerCase())) {
-      setError('Invalid file type. Please upload a JPG, PNG, or WEBP image.');
+      const msg = 'Invalid file type. Please upload a JPG, PNG, or WEBP image.';
+      setError(msg);
+      showWarningToast(msg);
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      setError('File size exceeds 10MB limit.');
+      const msg = 'File size exceeds 10MB limit.';
+      setError(msg);
+      showWarningToast(msg);
       return;
     }
 
@@ -63,10 +68,13 @@ export default function ImageUpload({
         onChange(result.url);
         setPreviewUrl(formatImageUrl(result.url));
         setSelectedFile(null);
+        showSuccessToast('Image uploaded successfully');
       }
     } catch (err) {
       console.error('Failed to upload image:', err);
-      setError(err.response?.data?.message || err.message || 'Image upload failed.');
+      const errMsg = err.response?.data?.message || err.message || 'Image upload failed.';
+      setError(errMsg);
+      showErrorToast(err, { defaultMessage: 'Failed to upload image' });
       // revert preview
       setPreviewUrl(value ? formatImageUrl(value) : '');
       setSelectedFile(null);
@@ -109,6 +117,7 @@ export default function ImageUpload({
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+    showInfoToast('Image removed');
   };
 
   return (

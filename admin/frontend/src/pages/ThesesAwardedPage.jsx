@@ -11,6 +11,7 @@ import Badge from '../components/common/Badge';
 import Modal from '../components/common/Modal';
 import ConfirmModal from '../components/common/ConfirmModal';
 import { Edit2, Trash2, Award } from 'lucide-react';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
 
 export default function ThesesAwardedPage() {
   const dispatch = useDispatch();
@@ -99,22 +100,33 @@ export default function ThesesAwardedPage() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (selectedThesis) {
-      await dispatch(updateThesis({ id: selectedThesis.id, data: formData }));
-      setIsModalOpen(false);
-      loadData(pageNumber);
-    } else {
-      await dispatch(createThesis(formData));
-      setIsModalOpen(false);
-      loadData(0);
+    try {
+      if (selectedThesis) {
+        await dispatch(updateThesis({ id: selectedThesis.id, data: formData })).unwrap();
+        showSuccessToast('Ph.D Thesis updated successfully');
+        setIsModalOpen(false);
+        loadData(pageNumber);
+      } else {
+        await dispatch(createThesis(formData)).unwrap();
+        showSuccessToast('Ph.D Thesis created successfully');
+        setIsModalOpen(false);
+        loadData(0);
+      }
+    } catch (err) {
+      showErrorToast(err, { defaultMessage: selectedThesis ? 'Failed to update thesis record' : 'Failed to create thesis record' });
     }
   };
 
   const handleDelete = async () => {
     if (thesisToDelete) {
-      await dispatch(deleteThesis(thesisToDelete.id));
-      setIsDeleteModalOpen(false);
-      setThesisToDelete(null);
+      try {
+        await dispatch(deleteThesis(thesisToDelete.id)).unwrap();
+        showSuccessToast('Ph.D Thesis deleted successfully');
+        setIsDeleteModalOpen(false);
+        setThesisToDelete(null);
+      } catch (err) {
+        showErrorToast(err, { defaultMessage: 'Failed to delete thesis record' });
+      }
     }
   };
 

@@ -11,6 +11,7 @@ import Badge from '../components/common/Badge';
 import Modal from '../components/common/Modal';
 import ConfirmModal from '../components/common/ConfirmModal';
 import { Edit2, Trash2 } from 'lucide-react';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
 
 export default function VacantSeatsPage() {
   const dispatch = useDispatch();
@@ -102,20 +103,33 @@ export default function VacantSeatsPage() {
     const vacant = Math.max(0, (formData.designationSeatLimit || 0) - (formData.allottedSeat || 0));
     const dataToSend = { ...formData, noOfVacant: vacant };
 
-    if (selectedSeat) {
-      await dispatch(updateVacantSeat({ id: selectedSeat.id, data: dataToSend }));
-    } else {
-      await dispatch(createVacantSeat(dataToSend));
+    try {
+      if (selectedSeat) {
+        await dispatch(updateVacantSeat({ id: selectedSeat.id, data: dataToSend })).unwrap();
+        showSuccessToast('Vacant seat matrix updated successfully');
+        setIsModalOpen(false);
+        loadData(pageNumber);
+      } else {
+        await dispatch(createVacantSeat(dataToSend)).unwrap();
+        showSuccessToast('Vacant seat matrix created successfully');
+        setIsModalOpen(false);
+        loadData(0);
+      }
+    } catch (err) {
+      showErrorToast(err, { defaultMessage: selectedSeat ? 'Failed to update vacant seat record' : 'Failed to create vacant seat record' });
     }
-    setIsModalOpen(false);
-    loadData(pageNumber);
   };
 
   const handleDelete = async () => {
     if (seatToDelete) {
-      await dispatch(deleteVacantSeat(seatToDelete.id));
-      setIsDeleteModalOpen(false);
-      setSeatToDelete(null);
+      try {
+        await dispatch(deleteVacantSeat(seatToDelete.id)).unwrap();
+        showSuccessToast('Vacant seat record deleted successfully');
+        setIsDeleteModalOpen(false);
+        setSeatToDelete(null);
+      } catch (err) {
+        showErrorToast(err, { defaultMessage: 'Failed to delete vacant seat record' });
+      }
     }
   };
 
