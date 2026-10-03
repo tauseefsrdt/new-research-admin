@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchPhdSupervisors,
@@ -32,6 +32,7 @@ export default function PhdSupervisorsPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedSupervisor, setSelectedSupervisor] = useState(null);
   const [supervisorToDelete, setSupervisorToDelete] = useState(null);
+  const isFirstMount = useRef(true);
 
   const [formData, setFormData] = useState({
     supervisor: '',
@@ -58,6 +59,11 @@ export default function PhdSupervisorsPage() {
   };
 
   useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      loadData(0);
+      return;
+    }
     const timer = setTimeout(() => {
       loadData(0);
     }, 300);

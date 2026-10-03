@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchLeaderships,
@@ -32,6 +32,7 @@ export default function LeadershipPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedLeader, setSelectedLeader] = useState(null);
   const [leaderToDelete, setLeaderToDelete] = useState(null);
+  const isFirstMount = useRef(true);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -58,6 +59,11 @@ export default function LeadershipPage() {
   };
 
   useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      loadData(0);
+      return;
+    }
     const timer = setTimeout(() => {
       loadData(0);
     }, 300);

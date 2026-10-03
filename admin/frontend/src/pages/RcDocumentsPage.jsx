@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchRcDocuments,
@@ -33,6 +33,7 @@ export default function RcDocumentsPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [docToDelete, setDocToDelete] = useState(null);
+  const isFirstMount = useRef(true);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -60,6 +61,11 @@ export default function RcDocumentsPage() {
   };
 
   useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      loadData(0);
+      return;
+    }
     const timer = setTimeout(() => {
       loadData(0);
     }, 300);

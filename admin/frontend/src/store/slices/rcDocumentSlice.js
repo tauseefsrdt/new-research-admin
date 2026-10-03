@@ -57,7 +57,7 @@ const rcDocumentSlice = createSlice({
     pageSize: 10,
     totalElements: 0,
     totalPages: 0,
-    loading: false,
+    loading: true,
     actionLoading: false,
     error: null,
   },

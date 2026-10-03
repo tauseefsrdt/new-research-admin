@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchVacantSeats,
@@ -32,6 +32,7 @@ export default function VacantSeatsPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedSeat, setSelectedSeat] = useState(null);
   const [seatToDelete, setSeatToDelete] = useState(null);
+  const isFirstMount = useRef(true);
 
   const [formData, setFormData] = useState({
     institute: '',
@@ -60,6 +61,11 @@ export default function VacantSeatsPage() {
   };
 
   useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      loadData(0);
+      return;
+    }
     const timer = setTimeout(() => {
       loadData(0);
     }, 300);

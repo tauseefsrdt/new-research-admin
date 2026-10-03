@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchPatents,
@@ -32,6 +32,7 @@ export default function PatentsPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedPatent, setSelectedPatent] = useState(null);
   const [patentToDelete, setPatentToDelete] = useState(null);
+  const isFirstMount = useRef(true);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -61,6 +62,11 @@ export default function PatentsPage() {
   };
 
   useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      loadData(0);
+      return;
+    }
     const timer = setTimeout(() => {
       loadData(0);
     }, 300);

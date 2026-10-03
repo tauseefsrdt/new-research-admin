@@ -20,7 +20,7 @@ const dashboardSlice = createSlice({
   name: 'dashboard',
   initialState: {
     stats: null,
-    loading: false,
+    loading: true,
     error: null,
   },
   reducers: {},
