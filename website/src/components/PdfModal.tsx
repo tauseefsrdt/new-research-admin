@@ -125,12 +125,19 @@ export const PdfModal: React.FC<PdfModalProps> = ({
             </div>
           )}
 
-          <iframe
-            src={pdfUrl}
-            title={title || 'Patent PDF Viewer'}
-            className="w-full h-full border-none"
+          <object
+            data={pdfUrl}
+            type="application/pdf"
+            className="w-full h-full"
             onLoad={() => setLoading(false)}
-          />
+          >
+            <iframe
+              src={pdfUrl}
+              title={title || 'Patent PDF Viewer'}
+              className="w-full h-full border-none"
+              onLoad={() => setLoading(false)}
+            />
+          </object>
         </div>
 
         {/* Footer info */}

@@ -6,6 +6,7 @@
 /home/tauseef/research-admin/admin/backend/src/main/java/com/example/crud/controller/AuthController.java
 /home/tauseef/research-admin/admin/backend/src/main/java/com/example/crud/controller/BookController.java
 /home/tauseef/research-admin/admin/backend/src/main/java/com/example/crud/controller/DashboardController.java
+/home/tauseef/research-admin/admin/backend/src/main/java/com/example/crud/controller/FileServingController.java
 /home/tauseef/research-admin/admin/backend/src/main/java/com/example/crud/controller/FileUploadController.java
 /home/tauseef/research-admin/admin/backend/src/main/java/com/example/crud/controller/GalleryImageController.java
 /home/tauseef/research-admin/admin/backend/src/main/java/com/example/crud/controller/HeroProfileController.java
