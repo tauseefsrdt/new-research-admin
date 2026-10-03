@@ -10,7 +10,8 @@ import DataTable from '../components/common/DataTable';
 import Badge from '../components/common/Badge';
 import Modal from '../components/common/Modal';
 import ConfirmModal from '../components/common/ConfirmModal';
-import { Edit2, Trash2, ExternalLink, Star } from 'lucide-react';
+import PdfUpload from '../components/common/PdfUpload';
+import { Edit2, Trash2, ExternalLink, Star, FileText } from 'lucide-react';
 
 export default function PatentsPage() {
   const dispatch = useDispatch();
@@ -39,6 +40,7 @@ export default function PatentsPage() {
     departmentKey: '',
     doi: '',
     pdf: '',
+    pdfUrl: '',
     featured: false,
     citations: 0,
     status: 'ACTIVE',
@@ -74,6 +76,7 @@ export default function PatentsPage() {
       departmentKey: '',
       doi: '',
       pdf: '',
+      pdfUrl: '',
       featured: false,
       citations: 0,
       status: 'ACTIVE',
@@ -90,7 +93,8 @@ export default function PatentsPage() {
       yearOfAward: patent.yearOfAward || '',
       departmentKey: patent.departmentKey || '',
       doi: patent.doi || '',
-      pdf: patent.pdf || '',
+      pdf: patent.pdf || patent.pdfUrl || '',
+      pdfUrl: patent.pdfUrl || patent.pdf || '',
       featured: patent.featured || false,
       citations: patent.citations || 0,
       status: patent.status || 'ACTIVE',
@@ -152,6 +156,28 @@ export default function PatentsPage() {
           {row.yearOfAward || row.year || '—'}
         </span>
       ),
+    },
+    {
+      header: 'PDF Document',
+      width: '120px',
+      render: (row) => {
+        const pdfLink = row.pdf || row.pdfUrl;
+        return pdfLink ? (
+          <a
+            href={pdfLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors"
+            title="Open patent PDF"
+          >
+            <FileText className="w-3.5 h-3.5 text-red-600 shrink-0" />
+            <span>PDF</span>
+            <ExternalLink className="w-2.5 h-2.5 text-red-500" />
+          </a>
+        ) : (
+          <span className="text-xs text-slate-300 font-mono">—</span>
+        );
+      },
     },
     {
       header: 'Featured',
@@ -329,6 +355,15 @@ export default function PatentsPage() {
               </select>
             </div>
           </div>
+
+          {/* PDF Upload / Update Option */}
+          <PdfUpload
+            value={formData.pdf || formData.pdfUrl}
+            onChange={(url) => setFormData({ ...formData, pdf: url, pdfUrl: url })}
+            module="patents"
+            label="Patent Certificate / Document (PDF)"
+            helperText="Upload official patent publication / certificate PDF (Stored in upload_pdf/patents/)"
+          />
 
           <div className="flex items-center gap-2 pt-2">
             <input

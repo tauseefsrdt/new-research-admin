@@ -16,77 +16,100 @@ import java.util.*;
 @Slf4j
 public class FileUploadService {
 
-    private static final Set<String> ALLOWED_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp");
-    private static final Set<String> ALLOWED_MIME_TYPES = Set.of(
+    private static final Set<String> ALLOWED_IMAGE_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp");
+    private static final Set<String> ALLOWED_IMAGE_MIME_TYPES = Set.of(
             "image/jpeg",
             "image/png",
             "image/webp"
     );
-    private static final long MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+
+    private static final Set<String> ALLOWED_PDF_EXTENSIONS = Set.of("pdf");
+    private static final Set<String> ALLOWED_PDF_MIME_TYPES = Set.of(
+            "application/pdf",
+            "application/x-pdf",
+            "application/acrobat",
+            "applications/vnd.pdf",
+            "text/pdf"
+    );
+
+    private static final long MAX_IMAGE_SIZE_BYTES = 15 * 1024 * 1024; // 15MB
+    private static final long MAX_PDF_SIZE_BYTES = 50 * 1024 * 1024;   // 50MB
 
     @Value("${app.upload.dir:}")
     private String configuredUploadDir;
 
-    private Path rootUploadPath;
+    @Value("${app.upload.pdf.dir:}")
+    private String configuredPdfUploadDir;
+
+    private Path rootUploadPath;     // For upload_image
+    private Path rootPdfUploadPath;  // For upload_pdf
 
     @PostConstruct
     public void init() {
+        Path projectRoot = findProjectRoot();
+
         if (StringUtils.hasText(configuredUploadDir)) {
             rootUploadPath = Paths.get(configuredUploadDir).toAbsolutePath().normalize();
         } else {
-            // Find project root: if running inside admin/backend, walk up to research-admin
-            Path current = Paths.get("").toAbsolutePath().normalize();
-            if (current.endsWith("backend") && current.getParent() != null && current.getParent().endsWith("admin")) {
-                rootUploadPath = current.getParent().getParent().resolve("upload_image");
-            } else if (current.endsWith("admin")) {
-                rootUploadPath = current.getParent().resolve("upload_image");
-            } else {
-                rootUploadPath = current.resolve("upload_image");
-            }
+            rootUploadPath = projectRoot.resolve("upload_image").normalize();
+        }
+
+        if (StringUtils.hasText(configuredPdfUploadDir)) {
+            rootPdfUploadPath = Paths.get(configuredPdfUploadDir).toAbsolutePath().normalize();
+        } else {
+            rootPdfUploadPath = projectRoot.resolve("upload_pdf").normalize();
         }
 
         try {
             Files.createDirectories(rootUploadPath);
             log.info("Initialized project root image upload directory at: {}", rootUploadPath);
+            Files.createDirectories(rootPdfUploadPath);
+            log.info("Initialized project root PDF upload directory at: {}", rootPdfUploadPath);
         } catch (IOException e) {
-            log.error("Failed to create root upload directory: {}", e.getMessage(), e);
-            throw new RuntimeException("Could not initialize upload storage location", e);
+            log.error("Failed to create upload directories: {}", e.getMessage(), e);
+            throw new RuntimeException("Could not initialize upload storage locations", e);
         }
+    }
+
+    private Path findProjectRoot() {
+        Path current = Paths.get("").toAbsolutePath().normalize();
+        if (current.endsWith("backend") && current.getParent() != null && current.getParent().endsWith("admin")) {
+            return current.getParent().getParent();
+        } else if (current.endsWith("admin")) {
+            return current.getParent();
+        }
+        return current;
     }
 
     public Path getRootUploadPath() {
         return rootUploadPath;
     }
 
+    public Path getRootPdfUploadPath() {
+        return rootPdfUploadPath;
+    }
+
     /**
-     * Upload an image file to a designated module subdirectory in project-root/upload_image.
-     *
-     * @param file          The uploaded multipart file.
-     * @param module        Subdirectory (e.g. "institute-department", "faculty", "events").
-     * @param oldImagePath  Optional old image path to replace/clean up after successful upload.
-     * @return Public relative URL path (e.g. "/upload_image/institute-department/dep-1234.png").
+     * Upload an image file to project-root/upload_image/<module>/
+     * Deletes previous image if oldImagePath is provided.
      */
     public UploadResponse uploadImage(MultipartFile file, String module, String oldImagePath) {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("No file selected or uploaded file is empty.");
         }
 
-        if (file.getSize() > MAX_FILE_SIZE_BYTES) {
-            throw new IllegalArgumentException("File size exceeds maximum allowed limit of 10MB.");
+        if (file.getSize() > MAX_IMAGE_SIZE_BYTES) {
+            throw new IllegalArgumentException("Image file size exceeds maximum allowed limit of 15MB.");
         }
 
         String originalFilename = StringUtils.cleanPath(file.getOriginalFilename() != null ? file.getOriginalFilename() : "image.png");
         String extension = getFileExtension(originalFilename).toLowerCase();
 
-        if (!ALLOWED_EXTENSIONS.contains(extension)) {
-            throw new IllegalArgumentException("Unsupported file format: ." + extension + ". Allowed formats: JPG, JPEG, PNG, WEBP.");
+        if (!ALLOWED_IMAGE_EXTENSIONS.contains(extension)) {
+            throw new IllegalArgumentException("Unsupported image format: ." + extension + ". Allowed formats: JPG, JPEG, PNG, WEBP.");
         }
 
         String contentType = file.getContentType();
-        if (contentType != null && !ALLOWED_MIME_TYPES.contains(contentType.toLowerCase())) {
-            log.warn("MIME type warning: received {} for extension {}", contentType, extension);
-        }
-
         String cleanModule = sanitizeSubDir(module);
         Path targetDir = rootUploadPath.resolve(cleanModule);
         try {
@@ -95,12 +118,7 @@ public class FileUploadService {
             throw new RuntimeException("Could not create directory for module: " + cleanModule, e);
         }
 
-        // Generate safe, collision-resistant unique filename
-        String baseName = getBaseName(originalFilename);
-        String safeBaseName = baseName.replaceAll("[^a-zA-Z0-9_-]", "-").replaceAll("-+", "-");
-        if (safeBaseName.length() > 30) {
-            safeBaseName = safeBaseName.substring(0, 30);
-        }
+        String safeBaseName = sanitizeFilename(getBaseName(originalFilename));
         String uniqueFileName = String.format("%s-%s-%d.%s",
                 safeBaseName.isEmpty() ? "img" : safeBaseName,
                 UUID.randomUUID().toString().substring(0, 8),
@@ -110,22 +128,20 @@ public class FileUploadService {
 
         Path targetFile = targetDir.resolve(uniqueFileName).normalize();
 
-        // Security check: ensure target path is within root upload path
         if (!targetFile.startsWith(rootUploadPath)) {
-            throw new SecurityException("Cannot store file outside current storage directory.");
+            throw new SecurityException("Cannot store file outside image storage directory.");
         }
 
-        // Write file
         try (InputStream is = file.getInputStream()) {
             Files.copy(is, targetFile, StandardCopyOption.REPLACE_EXISTING);
             log.info("Saved uploaded image to: {}", targetFile.toAbsolutePath());
         } catch (IOException e) {
-            throw new RuntimeException("Failed to store file: " + uniqueFileName, e);
+            throw new RuntimeException("Failed to store image: " + uniqueFileName, e);
         }
 
-        // Only after successful save, delete old image if it was inside upload_image
+        // Clean up old image if replacing
         if (StringUtils.hasText(oldImagePath)) {
-            deleteOldImageIfInternal(oldImagePath);
+            deleteOldFileIfInternal(oldImagePath);
         }
 
         String relativeUrl = "/upload_image/" + cleanModule + "/" + uniqueFileName;
@@ -141,34 +157,137 @@ public class FileUploadService {
     }
 
     /**
-     * Delete an image from upload_image storage if it belongs to it.
+     * Upload a PDF file to project-root/upload_pdf/<module>/
+     * Deletes previous PDF if oldPdfPath is provided.
      */
-    public boolean deleteOldImageIfInternal(String imagePath) {
-        if (!StringUtils.hasText(imagePath)) {
+    public UploadResponse uploadPdf(MultipartFile file, String module, String oldPdfPath) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("No file selected or uploaded file is empty.");
+        }
+
+        if (file.getSize() > MAX_PDF_SIZE_BYTES) {
+            throw new IllegalArgumentException("PDF file size exceeds maximum allowed limit of 50MB.");
+        }
+
+        String originalFilename = StringUtils.cleanPath(file.getOriginalFilename() != null ? file.getOriginalFilename() : "document.pdf");
+        String extension = getFileExtension(originalFilename).toLowerCase();
+
+        if (!ALLOWED_PDF_EXTENSIONS.contains(extension)) {
+            throw new IllegalArgumentException("Unsupported file format: ." + extension + ". Only PDF (.pdf) files are allowed.");
+        }
+
+        String contentType = file.getContentType();
+        String cleanModule = sanitizeSubDir(module);
+        Path targetDir = rootPdfUploadPath.resolve(cleanModule);
+        try {
+            Files.createDirectories(targetDir);
+        } catch (IOException e) {
+            throw new RuntimeException("Could not create PDF directory for module: " + cleanModule, e);
+        }
+
+        String safeBaseName = sanitizeFilename(getBaseName(originalFilename));
+        String uniqueFileName = String.format("%s-%s-%d.%s",
+                safeBaseName.isEmpty() ? "doc" : safeBaseName,
+                UUID.randomUUID().toString().substring(0, 8),
+                System.currentTimeMillis(),
+                extension
+        );
+
+        Path targetFile = targetDir.resolve(uniqueFileName).normalize();
+
+        if (!targetFile.startsWith(rootPdfUploadPath)) {
+            throw new SecurityException("Cannot store file outside PDF storage directory.");
+        }
+
+        try (InputStream is = file.getInputStream()) {
+            Files.copy(is, targetFile, StandardCopyOption.REPLACE_EXISTING);
+            log.info("Saved uploaded PDF to: {}", targetFile.toAbsolutePath());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to store PDF file: " + uniqueFileName, e);
+        }
+
+        // Clean up old PDF if replacing
+        if (StringUtils.hasText(oldPdfPath)) {
+            deleteOldFileIfInternal(oldPdfPath);
+        }
+
+        String relativeUrl = "/upload_pdf/" + cleanModule + "/" + uniqueFileName;
+
+        return UploadResponse.builder()
+                .url(relativeUrl)
+                .filename(uniqueFileName)
+                .originalFilename(originalFilename)
+                .module(cleanModule)
+                .sizeBytes(file.getSize())
+                .contentType(contentType)
+                .build();
+    }
+
+    /**
+     * Delete any file from upload_image or upload_pdf storage if it resides in them.
+     */
+    public boolean deleteOldFileIfInternal(String filePath) {
+        if (!StringUtils.hasText(filePath)) {
             return false;
         }
 
         try {
-            String path = imagePath.trim();
-            if (path.startsWith("/upload_image/")) {
-                path = path.substring("/upload_image/".length());
+            String path = filePath.trim();
+
+            // Check if full URL containing /upload_image/ or /upload_pdf/
+            if (path.contains("/upload_image/")) {
+                path = path.substring(path.indexOf("/upload_image/") + "/upload_image/".length());
+                Path fileToDelete = rootUploadPath.resolve(path).normalize();
+                if (fileToDelete.startsWith(rootUploadPath) && Files.exists(fileToDelete) && !Files.isDirectory(fileToDelete)) {
+                    Files.delete(fileToDelete);
+                    log.info("Deleted previous replaced image: {}", fileToDelete);
+                    return true;
+                }
             } else if (path.startsWith("upload_image/")) {
                 path = path.substring("upload_image/".length());
-            } else {
-                // Not an uploaded image file (e.g. existing static website URL), do not delete
-                return false;
-            }
-
-            Path fileToDelete = rootUploadPath.resolve(path).normalize();
-            if (fileToDelete.startsWith(rootUploadPath) && Files.exists(fileToDelete) && !Files.isDirectory(fileToDelete)) {
-                Files.delete(fileToDelete);
-                log.info("Deleted previous replaced image: {}", fileToDelete);
-                return true;
+                Path fileToDelete = rootUploadPath.resolve(path).normalize();
+                if (fileToDelete.startsWith(rootUploadPath) && Files.exists(fileToDelete) && !Files.isDirectory(fileToDelete)) {
+                    Files.delete(fileToDelete);
+                    log.info("Deleted previous replaced image: {}", fileToDelete);
+                    return true;
+                }
+            } else if (path.contains("/upload_pdf/")) {
+                path = path.substring(path.indexOf("/upload_pdf/") + "/upload_pdf/".length());
+                Path fileToDelete = rootPdfUploadPath.resolve(path).normalize();
+                if (fileToDelete.startsWith(rootPdfUploadPath) && Files.exists(fileToDelete) && !Files.isDirectory(fileToDelete)) {
+                    Files.delete(fileToDelete);
+                    log.info("Deleted previous replaced PDF: {}", fileToDelete);
+                    return true;
+                }
+            } else if (path.startsWith("upload_pdf/")) {
+                path = path.substring("upload_pdf/".length());
+                Path fileToDelete = rootPdfUploadPath.resolve(path).normalize();
+                if (fileToDelete.startsWith(rootPdfUploadPath) && Files.exists(fileToDelete) && !Files.isDirectory(fileToDelete)) {
+                    Files.delete(fileToDelete);
+                    log.info("Deleted previous replaced PDF: {}", fileToDelete);
+                    return true;
+                }
             }
         } catch (Exception e) {
-            log.warn("Could not delete old image file {}: {}", imagePath, e.getMessage());
+            log.warn("Could not delete old file {}: {}", filePath, e.getMessage());
         }
         return false;
+    }
+
+    public boolean deleteOldImageIfInternal(String imagePath) {
+        return deleteOldFileIfInternal(imagePath);
+    }
+
+    public boolean deleteOldPdfIfInternal(String pdfPath) {
+        return deleteOldFileIfInternal(pdfPath);
+    }
+
+    private String sanitizeFilename(String baseName) {
+        if (!StringUtils.hasText(baseName)) {
+            return "file";
+        }
+        String safe = baseName.replaceAll("[^a-zA-Z0-9_-]", "-").replaceAll("-+", "-");
+        return safe.length() > 30 ? safe.substring(0, 30) : safe;
     }
 
     private String sanitizeSubDir(String module) {

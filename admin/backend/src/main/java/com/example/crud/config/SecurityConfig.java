@@ -49,6 +49,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/api/upload/**").permitAll()
                         .requestMatchers("/upload_image/**").permitAll()
+                        .requestMatchers("/upload_pdf/**").permitAll()
                         .requestMatchers("/api/**").permitAll()
                         .anyRequest().permitAll()
                 )

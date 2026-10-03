@@ -28,6 +28,10 @@ export default defineConfig(({ mode }) => {
           target: backendTarget,
           changeOrigin: true,
         },
+        '/upload_pdf': {
+          target: backendTarget,
+          changeOrigin: true,
+        },
       },
     },
     build: {

@@ -18,10 +18,6 @@ public class FileUploadController {
 
     /**
      * Upload an image for any module (e.g. institute-department, faculty, events).
-     *
-     * @param file         The multipart image file.
-     * @param module       Target module directory under upload_image/ (e.g. "institute-department").
-     * @param oldImagePath Optional previous image path to replace.
      */
     @PostMapping("/image")
     public ResponseEntity<ApiResponse<FileUploadService.UploadResponse>> uploadImage(
@@ -37,6 +33,22 @@ public class FileUploadController {
     }
 
     /**
+     * Upload a PDF file for any module (e.g. patents, research-papers, rc-documents, theses).
+     */
+    @PostMapping("/pdf")
+    public ResponseEntity<ApiResponse<FileUploadService.UploadResponse>> uploadPdf(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "module", defaultValue = "general") String module,
+            @RequestParam(value = "oldPdfPath", required = false) String oldPdfPath
+    ) {
+        log.info("Received PDF upload request for module '{}', oldPdfPath: '{}', originalFilename: '{}'",
+                module, oldPdfPath, file != null ? file.getOriginalFilename() : "null");
+
+        FileUploadService.UploadResponse response = fileUploadService.uploadPdf(file, module, oldPdfPath);
+        return ResponseEntity.ok(ApiResponse.ok("PDF uploaded successfully", response));
+    }
+
+    /**
      * Delete an uploaded image file.
      */
     @DeleteMapping("/image")
@@ -44,6 +56,29 @@ public class FileUploadController {
             @RequestParam("imagePath") String imagePath
     ) {
         boolean deleted = fileUploadService.deleteOldImageIfInternal(imagePath);
-        return ResponseEntity.ok(ApiResponse.ok(deleted ? "Image deleted" : "Image not found or not in upload_image storage", deleted));
+        return ResponseEntity.ok(ApiResponse.ok(deleted ? "Image deleted" : "Image not found or not in local storage", deleted));
+    }
+
+    /**
+     * Delete an uploaded PDF file.
+     */
+    @DeleteMapping("/pdf")
+    public ResponseEntity<ApiResponse<Boolean>> deletePdf(
+            @RequestParam("pdfPath") String pdfPath
+    ) {
+        boolean deleted = fileUploadService.deleteOldPdfIfInternal(pdfPath);
+        return ResponseEntity.ok(ApiResponse.ok(deleted ? "PDF deleted" : "PDF not found or not in local storage", deleted));
+    }
+
+    /**
+     * Universal file deletion (either image or PDF in storage).
+     */
+    @DeleteMapping("/file")
+    public ResponseEntity<ApiResponse<Boolean>> deleteFile(
+            @RequestParam("filePath") String filePath
+    ) {
+        boolean deleted = fileUploadService.deleteOldFileIfInternal(filePath);
+        return ResponseEntity.ok(ApiResponse.ok(deleted ? "File deleted" : "File not found or not in local storage", deleted));
     }
 }
+

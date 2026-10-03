@@ -19,6 +19,7 @@ import java.util.List;
 public class PatentService {
 
     private final PatentRepository patentRepository;
+    private final FileUploadService fileUploadService;
 
     public PageResponse<Patent> getAll(String search, String status, String year, int page, int size, String sortBy, String sortDir) {
         Sort sort;
@@ -58,6 +59,10 @@ public class PatentService {
     @Transactional
     public Patent update(Long id, Patent patentDetails) {
         Patent patent = getById(id);
+
+        String oldPdf = patent.getPdf();
+        String oldPdfUrl = patent.getPdfUrl();
+
         patent.setSrNo(patentDetails.getSrNo());
         patent.setPatenterName(patentDetails.getPatenterName());
         patent.setPatentNumber(patentDetails.getPatentNumber());
@@ -75,12 +80,27 @@ public class PatentService {
         if (patentDetails.getStatus() != null) {
             patent.setStatus(patentDetails.getStatus());
         }
+
+        // Clean up old file if changed
+        if (oldPdf != null && !oldPdf.equals(patentDetails.getPdf())) {
+            fileUploadService.deleteOldFileIfInternal(oldPdf);
+        }
+        if (oldPdfUrl != null && !oldPdfUrl.equals(patentDetails.getPdfUrl())) {
+            fileUploadService.deleteOldFileIfInternal(oldPdfUrl);
+        }
+
         return patentRepository.save(patent);
     }
 
     @Transactional
     public void delete(Long id) {
         Patent patent = getById(id);
+        if (patent.getPdf() != null) {
+            fileUploadService.deleteOldFileIfInternal(patent.getPdf());
+        }
+        if (patent.getPdfUrl() != null) {
+            fileUploadService.deleteOldFileIfInternal(patent.getPdfUrl());
+        }
         patentRepository.delete(patent);
     }
 

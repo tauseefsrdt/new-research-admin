@@ -10,6 +10,7 @@ import DataTable from '../components/common/DataTable';
 import Badge from '../components/common/Badge';
 import Modal from '../components/common/Modal';
 import ConfirmModal from '../components/common/ConfirmModal';
+import PdfUpload from '../components/common/PdfUpload';
 import { Edit2, Trash2, Download, FileText } from 'lucide-react';
 
 export default function RcDocumentsPage() {
@@ -340,18 +341,14 @@ export default function RcDocumentsPage() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              File Path / Download URL
-            </label>
-            <input
-              type="text"
-              value={formData.path}
-              onChange={(e) => setFormData({ ...formData, path: e.target.value })}
-              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0A4A8F]/20 focus:border-[#0A4A8F]"
-              placeholder="/research/Filename.pdf"
-            />
-          </div>
+          {/* PDF Document Upload */}
+          <PdfUpload
+            value={formData.path}
+            onChange={(url) => setFormData({ ...formData, path: url, filename: url.split('/').pop() || formData.filename })}
+            module="rc-documents"
+            label="Upload / Update Document (PDF)"
+            helperText="Upload official guideline / proforma PDF (Stored in upload_pdf/rc-documents/)"
+          />
 
           <div className="flex items-center justify-end gap-3 pt-5 border-t border-slate-100">
             <button

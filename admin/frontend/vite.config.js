@@ -25,6 +25,10 @@ export default defineConfig(({ mode }) => {
         '/upload_image': {
           target: backendTarget,
           changeOrigin: true,
+        },
+        '/upload_pdf': {
+          target: backendTarget,
+          changeOrigin: true,
         }
       }
     },

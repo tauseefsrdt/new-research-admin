@@ -36,6 +36,19 @@ public class WebConfig implements WebMvcConfigurer {
                 .setCachePeriod(3600);
 
         log.info("Registered static resource handler for /upload_image/** -> {}", uploadLocation);
+
+        Path rootPdfUploadPath = fileUploadService.getRootPdfUploadPath();
+        String pdfUploadLocation = rootPdfUploadPath.toUri().toString();
+
+        if (!pdfUploadLocation.endsWith("/")) {
+            pdfUploadLocation += "/";
+        }
+
+        registry.addResourceHandler("/upload_pdf/**")
+                .addResourceLocations(pdfUploadLocation)
+                .setCachePeriod(3600);
+
+        log.info("Registered static resource handler for /upload_pdf/** -> {}", pdfUploadLocation);
     }
 
     @Override

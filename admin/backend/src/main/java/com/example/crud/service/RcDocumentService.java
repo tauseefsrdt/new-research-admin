@@ -19,6 +19,7 @@ import java.util.List;
 public class RcDocumentService {
 
     private final RcDocumentRepository rcDocumentRepository;
+    private final FileUploadService fileUploadService;
 
     public PageResponse<RcDocument> getAll(String search, String category, String status, int page, int size, String sortBy, String sortDir) {
         Sort sort = sortDir.equalsIgnoreCase("desc") ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
@@ -51,6 +52,8 @@ public class RcDocumentService {
     @Transactional
     public RcDocument update(Long id, RcDocument details) {
         RcDocument document = getById(id);
+        String oldPath = document.getPath();
+
         document.setDocKey(details.getDocKey());
         document.setTitle(details.getTitle());
         document.setFilename(details.getFilename());
@@ -62,12 +65,20 @@ public class RcDocumentService {
         if (details.getStatus() != null) {
             document.setStatus(details.getStatus());
         }
+
+        if (oldPath != null && !oldPath.equals(details.getPath())) {
+            fileUploadService.deleteOldFileIfInternal(oldPath);
+        }
+
         return rcDocumentRepository.save(document);
     }
 
     @Transactional
     public void delete(Long id) {
         RcDocument document = getById(id);
+        if (document.getPath() != null) {
+            fileUploadService.deleteOldFileIfInternal(document.getPath());
+        }
         rcDocumentRepository.delete(document);
     }
 }
